@@ -1,0 +1,20 @@
+# Data & Math
+numpy>=1.21.0
+pandas>=1.3.0
+scipy>=1.7.0
+yfinance
+statsmodels
+
+# Econometrics (The Benchmark)
+arch>=5.0
+
+# Deep Learning (The Challenger)
+torch
+scikit-learn
+
+# Web Server (For Cloud Run)
+flask
+gunicorn
+
+# Testing (For the CI Pipeline)
+pytest

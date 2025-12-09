@@ -1,0 +1,62 @@
+steps:
+  # ==============================================================================
+  # Step 1: Continuous Integration (CI) - Test
+  # ==============================================================================
+  # Pull a lightweight python image to run unit tests before building the heavy container.
+  # This ensures we never deploy broken math to production.
+  # - name: 'python:3.9-slim'
+
+  - name: 'python:3.9-slim'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        pip install --upgrade pip && \
+        pip install pytest -r requirements.txt && \
+        pytest tests/
+
+  # ==============================================================================
+  # Step 2: Build the Container Image
+  # ==============================================================================
+  # Builds the Docker image and tags it with the commit SHA for version control.
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/quant-lab-repo/volatility-app:$COMMIT_SHA',
+      '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/quant-lab-repo/volatility-app:latest',
+      '.'
+    ]
+
+  # ==============================================================================
+  # Step 3: Push to Artifact Registry
+  # ==============================================================================
+  # Pushes the tagged images to Google Artifact Registry.
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'push',
+      'us-central1-docker.pkg.dev/$PROJECT_ID/quant-lab-repo/volatility-app'
+    ]
+
+  # ==============================================================================
+  # Step 4: Continuous Deployment (CD) - Deploy to Cloud Run
+  # ==============================================================================
+  # Deploys the new image to Cloud Run as a serverless service.
+  # Allow unauthenticated is set to true for demo purposes (secure this in real prod).
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'volatility-service'
+      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/quant-lab-repo/volatility-app:$COMMIT_SHA'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+
+# ==============================================================================
+# Configuration Options
+# ==============================================================================
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: '1200s' # 20 minutes max build time (DL models can be heavy)
