@@ -1,57 +1,60 @@
 steps:
   # ==============================================================================
-  # Step 1: Continuous Integration (CI) - Test
+  # Step 1: Build the Container Image
   # ==============================================================================
-  # Pull a lightweight python image to run unit tests before building the heavy container.
-  # This ensures we never deploy broken math to production.
-  # - name: 'python:3.9-slim'
-
-  - name: 'python:3.9-slim'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        pip install --upgrade pip && \
-        pip install pytest -r requirements.txt && \
-        pytest tests/
-
-  # ==============================================================================
-  # Step 2: Build the Container Image
-  # ==============================================================================
-  # Builds the Docker image and tags it with the commit SHA for version control.
+  # Builds the Docker image first. This installs all dependencies (including heavy ones like PyTorch).
+  # We tag it with the commit SHA ($BUILD_ID) and 'latest'.
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
-      '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/quant-lab-repo/volatility-app:$COMMIT_SHA',
+      '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/quant-lab-repo/volatility-app:$BUILD_ID',
       '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/quant-lab-repo/volatility-app:latest',
       '.'
     ]
 
   # ==============================================================================
+  # Step 2: Continuous Integration (CI) - Test
+  # ==============================================================================
+  # Run unit tests INSIDE the container we just built.
+  # This reuses the already installed dependencies, saving massive amounts of time (and bandwidth).
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        docker run --rm us-central1-docker.pkg.dev/$PROJECT_ID/quant-lab-repo/volatility-app:$BUILD_ID pytest tests/
+
+  # ==============================================================================
   # Step 3: Push to Artifact Registry
   # ==============================================================================
   # Pushes the tagged images to Google Artifact Registry.
+  # Only pushes if tests pass (since previous step would fail the build on error).
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'push',
-      'us-central1-docker.pkg.dev/$PROJECT_ID/quant-lab-repo/volatility-app'
+      'us-central1-docker.pkg.dev/$PROJECT_ID/quant-lab-repo/volatility-app:$BUILD_ID'
     ]
-
+  
   # ==============================================================================
   # Step 4: Continuous Deployment (CD) - Deploy to Cloud Run
   # ==============================================================================
   # Deploys the new image to Cloud Run as a serverless service.
-  # Allow unauthenticated is set to true for demo purposes (secure this in real prod).
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args:
       - 'run'
       - 'deploy'
       - 'volatility-service'
-      - '--image=us-central1-docker.pkg.dev/$PROJECT_ID/quant-lab-repo/volatility-app:$COMMIT_SHA'
+      - '--image=us-central1-docker.pkg.dev/quant-ai-lab/quant-lab-repo/volatility-app:$BUILD_ID'
       - '--region=us-central1'
       - '--platform=managed'
       - '--allow-unauthenticated'
+      - '--service-account=quant-runner@quant-ai-lab.iam.gserviceaccount.com'
+      # --- NEW FLAGS START HERE ---
+      - '--memory=4Gi'      # PyTorch needs RAM! Default 512MB is not enough.
+      - '--cpu=2'           # Faster math operations.
+      - '--timeout=300s'    # Give it 5 minutes to train/respond if needed.
+      # --- NEW FLAGS END HERE ---
 
 # ==============================================================================
 # Configuration Options
@@ -59,4 +62,4 @@ steps:
 options:
   logging: CLOUD_LOGGING_ONLY
 
-timeout: '1200s' # 20 minutes max build time (DL models can be heavy)
+timeout: '3600s' # Increased to 1 hour to prevent timeouts on heavy builds

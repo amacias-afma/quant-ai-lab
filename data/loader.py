@@ -25,7 +25,7 @@ class MarketDataLoader:
             raise ValueError("Data not fetched. Call fetch_data() first.")
         
         # Using 'Adj Close' for total return
-        self.data['Log_Ret'] = np.log(self.data['Adj Close'] / self.data['Adj Close'].shift(1))
+        self.data['Log_Ret'] = np.log(self.data[('Close', self.ticker)] / self.data[('Close', self.ticker)].shift(1))
         
         # Calculate a naive Realized Volatility (21-day rolling std dev) as a target
         self.data['Realized_Vol'] = self.data['Log_Ret'].rolling(window=21).std() * np.sqrt(252)
