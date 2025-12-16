@@ -19,37 +19,39 @@ from scipy import stats
 from src.evaluation.backtest import VolatilityBacktester
 
 class GarchBaseline:
-    def __init__(self, project_id, ticker='SPY'):
-        self.project_id = project_id
+    def __init__(self, ticker: str='SPY', data: pd.DataFrame=None):
+    # def __init__(self, project_id, ticker='SPY'):
+        # self.project_id = project_id
         self.ticker = ticker
+        self.data = data
         self.model_fit = None
         self.resid_std = None  # To store Standardized Residuals (Invariants)
 
-    def load_data(self, source='bigquery'):
-        """Fetches training data from BigQuery."""
-        if source == 'bigquery':
-            query = f"""
-                SELECT * 
-                FROM `market_data.{self.ticker}_processed`
-                ORDER BY date ASC
-            """
-            print("Fetching data from BigQuery...")
-            df = pandas_gbq.read_gbq(query, project_id=self.project_id)
-            df.set_index('date', inplace=True)
-            return df
-        elif source == 'local':
-            df = pd.read_parquet(f"data/{self.ticker}_processed.parquet")
-            df.set_index('date', inplace=True)
-            return df
-        else:
-            raise ValueError("Invalid source. Must be 'bigquery' or 'local'.")
+    # def load_data(self, source='bigquery'):
+    #     """Fetches training data from BigQuery."""
+    #     if source == 'bigquery':
+    #         query = f"""
+    #             SELECT * 
+    #             FROM `market_data.{self.ticker}_processed`
+    #             ORDER BY date ASC
+    #         """
+    #         print("Fetching data from BigQuery...")
+    #         df = pandas_gbq.read_gbq(query, project_id=self.project_id)
+    #         df.set_index('date', inplace=True)
+    #         return df
+    #     elif source == 'local':
+    #         df = pd.read_parquet(f"data/{self.ticker}_processed.parquet")
+    #         df.set_index('date', inplace=True)
+    #         return df
+    #     else:
+    #         raise ValueError("Invalid source. Must be 'bigquery' or 'local'.")
 
-    def train(self, df):
+    def train(self):
         """Fits GARCH(1,1) and stores standardized residuals."""
-        print(f"Training GARCH(1,1) on {self.ticker}...")
+        print(f"Training GARCH(1,1) ...")
         
         # Scale returns for numerical stability
-        returns_scaled = df['log_ret'] * 100
+        returns_scaled = self.data['log_ret'] * 100
         
         # Define model: Constant Mean, GARCH(1,1) Volatility
         am = arch_model(returns_scaled, vol='Garch', p=1, o=0, q=1, dist='Normal')
@@ -139,25 +141,13 @@ class GarchBaseline:
         else:
             model_pass = False
         return model_pass, evaluation_list
-
-    def run_backtest(self, df, split_ratio=0.8):
+    
+    def run_backtest(self, data_test):
         """
-        Splits data, trains on 'Train', and evaluates on 'Test'.
+        Evaluates on 'Test'.
         """
-        # 1. Split Data
-        n = len(df)
-        split_idx = int(n * split_ratio)
         
-        train_df = df.iloc[:split_idx]
-        test_df = df.iloc[split_idx:]
-        
-        print(f"\n--- Running Rolling Backtest ---")
-        print(f"Train Set: {len(train_df)} days | Test Set: {len(test_df)} days")
-        
-        # 2. Train on HISTORY (Train Set)
-        self.train(train_df)
-        
-        # 3. Forecast the FUTURE (Test Set)
+        # 1. Forecast the FUTURE (Test Set)
         # Ideally, we re-fit every day. For speed, we do a "Rolling Forecast" 
         # using the fixed parameters from the training set but updating the history.
         
@@ -165,7 +155,7 @@ class GarchBaseline:
         scale = 100
         
         # We need the full dataset to allow the GARCH filter to run through
-        full_returns = df['log_ret'] * scale
+        full_returns = data_test['log_ret'] * scale
 
         # Optimized approach using library features:
         # We re-specify the model on the FULL dataset but fix the parameters to the TRAIN values.
@@ -220,40 +210,98 @@ class GarchBaseline:
         
         metrics = backtester.compute_metrics()
         backtester.plot_results()
-
-        # # target_var = test_df['next_day_variance']
-
-        # # # Extract only the Test portion
-        # # test_forecasts = all_forecasts.iloc[split_idx:] / scale # Rescale back
-        # # print(test_df.head())
-        # # test_actuals = test_df['realized_vol_21d'] # These are the 21-day realized targets we engineered
-
-        # # test_actuals = test_df['target_vol'] # These are the 21-day realized targets we engineered
-        
-        # # Note: GARCH predicts 'Instantaneous' vol (1-day). 
-        # # 'Realized Vol' is usually 21-day average. 
-        # # We must align them. Scaling 1-day GARCH to Annualized is standard.
-        # y_pred = test_forecasts * np.sqrt(252)
-        # y_true = test_actuals
-        
-        # # Drop NaNs that might exist in alignment
-        # valid_idx = ~np.isnan(y_true) & ~np.isnan(y_pred)
-        # y_true = y_true[valid_idx]
-        # y_pred = y_pred[valid_idx]
-
-        # # 4. Feed into Referee
-        # backtester = VolatilityBacktester(y_true, y_pred, model_name="GARCH(1,1)")
-        # metrics = backtester.compute_metrics()
-        # backtester.plot_results()
         
         return metrics
 
-    def diagnose(self):
-        """Checks for stationarity of residuals."""
-        # The residuals should look like White Noise (no pattern)
-        # If they still have patterns, GARCH failed to capture the physics.
-        self.model_fit.plot()
-        plt.show()
+    # def run_backtest(self, split_ratio=0.8):
+    #     """
+    #     Splits data, trains on 'Train', and evaluates on 'Test'.
+    #     """
+    #     # 1. Split Data
+    #     n = len(self.data)
+    #     split_idx = int(n * split_ratio)
+        
+    #     train_df = self.data.iloc[:split_idx]
+    #     test_df = self.data.iloc[split_idx:]
+        
+    #     print(f"\n--- Running Rolling Backtest ---")
+    #     print(f"Train Set: {len(train_df)} days | Test Set: {len(test_df)} days")
+        
+    #     # 2. Train on HISTORY (Train Set)
+    #     self.train(train_df)
+        
+    #     # 3. Forecast the FUTURE (Test Set)
+    #     # Ideally, we re-fit every day. For speed, we do a "Rolling Forecast" 
+    #     # using the fixed parameters from the training set but updating the history.
+        
+    #     print("Generating out-of-sample forecasts...")
+    #     scale = 100
+        
+    #     # We need the full dataset to allow the GARCH filter to run through
+    #     full_returns = self.data['log_ret'] * scale
+
+    #     # Optimized approach using library features:
+    #     # We re-specify the model on the FULL dataset but fix the parameters to the TRAIN values.
+    #     am_full = arch_model(full_returns, vol='Garch', p=1, o=0, q=1, dist='Normal')
+    #     res_full = am_full.fix(self.model_fit.params)
+        
+    #     # The .conditional_volatility attribute gives the one-step-ahead sigma
+    #     # for every point in the series based on previous data.
+    #     all_forecasts = res_full.conditional_volatility
+    #     all_variance = res_full.conditional_volatility**2
+
+    #     # Get the variance forecast
+    #     pred_var_scaled = all_variance.iloc[split_idx:]
+        
+    #     # Rescale: Variance scales by 100^2 = 10000
+    #     pred_var = pred_var_scaled / (scale**2)
+        
+    #     # Get the Target (Next Day Variance from Ingest)
+    #     # We need to be careful: df['next_day_variance'] at index T is r_{T+1}^2
+    #     # Arch conditional_vol[T] is estimate of r_T^2. 
+    #     # So we need to compare pred_var[T+1] vs target[T]?
+    #     # EASIER: Just grab the 'next_day_variance' column corresponding to the same dates.
+        
+    #     # Garch Estimate for Today vs Reality for Today.
+    #     y_pred_var = pred_var
+    #     y_true_var = test_df['target_variance'] # Current day squared return
+        
+    #     # Drop NaNs
+    #     valid = ~np.isnan(y_true_var) & ~np.isnan(y_pred_var)
+    #     y_true_var = y_true_var[valid]
+    #     y_pred_var = y_pred_var[valid]
+
+    #     # Calculate Annualized Vol just for the Plot/RMSE display
+    #     y_pred_vol_ann = np.sqrt(y_pred_var) * np.sqrt(252)
+        
+    #     backtester = VolatilityBacktester(y_true_var, y_pred_vol_ann, model_name="GARCH(1,1)")
+        
+    #     # TRICK: We pass 'Variance' to compute QLIKE correctly, 
+    #     # but 'Vol' is usually better for RMSE interpretation.
+    #     # Let's stick to passing Variance to the backtester 
+    #     # and letting the backtester handle the conversion logic if you prefer.
+    #     # For now, let's keep it simple: Pass Volatility to the class we wrote earlier.
+        
+    #     # # Convert True Variance to True Vol (Annualized)
+    #     # y_true_vol_ann = np.sqrt(y_true_var) * np.sqrt(252)
+        
+    #     # # Re-Instantiate Backtester with Annualized Vol
+    #     # backtester = VolatilityBacktester(y_true_vol_ann, y_pred_vol_ann, model_name="GARCH(1,1)")
+        
+    #     # Note: Our QLIKE function inside backtester expects Vol inputs and squares them.
+    #     # So passing Vol is correct for the code we wrote previously.
+        
+    #     metrics = backtester.compute_metrics()
+    #     backtester.plot_results()
+        
+    #     return metrics
+
+    # def diagnose(self):
+    #     """Checks for stationarity of residuals."""
+    #     # The residuals should look like White Noise (no pattern)
+    #     # If they still have patterns, GARCH failed to capture the physics.
+    #     self.model_fit.plot()
+    #     plt.show()
 
     def forecast_volatility(self, horizon=1):
         """Predicts the next day's volatility."""

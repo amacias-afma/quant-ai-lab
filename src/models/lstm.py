@@ -103,39 +103,42 @@ class VolatilityLSTM(nn.Module):
 
 # --- 4. THE MANAGER CLASS (Train/Predict) ---
 class DeepVolEngine:
-    def __init__(self, project_id, ticker='SPY', seq_len=60):
-        self.project_id = project_id
+    # def __init__(self, ticker: str='SPY', data: pd.DataFrame=None):
+
+    def __init__(self, ticker='SPY', data: pd.DataFrame=None, seq_len: int=60):
+        # self.project_id = project_id
         self.ticker = ticker
         self.seq_len = seq_len
+        self.data = data
         self.model = None
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def load_data(self):
-        query = f"""
-            SELECT date, log_ret, target_variance 
-            FROM `market_data.{self.ticker}_processed`
-            ORDER BY date ASC
-        """
-        print("Fetching data from BigQuery...")
-        df = pandas_gbq.read_gbq(query, project_id=self.project_id)
-        return df
+    # def load_data(self):
+    #     query = f"""
+    #         SELECT date, log_ret, target_variance 
+    #         FROM `market_data.{self.ticker}_processed`
+    #         ORDER BY date ASC
+    #     """
+    #     print("Fetching data from BigQuery...")
+    #     df = pandas_gbq.read_gbq(query, project_id=self.project_id)
+    #     return df
 
-    def train(self, df, epochs=50, batch_size=32):
+    def train(self, epochs=50, batch_size=32):
         print(f"Training LSTM on {self.device}...")
         
         # Preprocessing: Scale returns? 
         # For volatility, raw log returns are small (0.001). 
         # LSTMs like values around [-1, 1]. Let's Scale by 100.
         scale = 100.0
-        returns_scaled = df['log_ret'].values * scale
+        returns_scaled = self.data['log_ret'].values * scale
         
-        # 1. Prepare Data
-        # Split Train/Test (80/20) - strictly by time!
-        split_idx = int(len(returns_scaled) * 0.8)
-        train_data = returns_scaled[:split_idx]
-        test_data = returns_scaled[split_idx:]
+        # # 1. Prepare Data
+        # # Split Train/Test (80/20) - strictly by time!
+        # split_idx = int(len(returns_scaled) * 0.8)
+        # train_data = returns_scaled[:split_idx]
+        # test_data = returns_scaled[split_idx:]
         
-        train_dataset = FinancialTimeSeriesDataset(train_data, self.seq_len)
+        train_dataset = FinancialTimeSeriesDataset(returns_scaled, self.seq_len)
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         
         # 2. Init Model
@@ -212,6 +215,71 @@ class DeepVolEngine:
         preds_vol_ann = np.sqrt(preds_var) * np.sqrt(252)
         
         return preds_vol_ann, np.array(all_targets_sq)/(scale**2)
+
+    def forecast_future(self, n_days=30, n_simulations=100, current_sequence=None):
+        """
+        Projects volatility n_days into the future using Recursive Monte Carlo.
+        
+        :param n_days: Number of days to forecast
+        :param n_simulations: Number of Monte Carlo paths
+        :param current_sequence: The last observed sequence of returns (tensor). 
+                                 If None, uses the last sequence from self.data.
+        :return: (mean_vol_path, lower_bound, upper_bound) - scaled to Annualized Vol
+        """
+        print(f"Simulating {n_days} days into future with {n_simulations} paths...")
+        self.model.eval()
+        scale = 100.0
+        
+        # 1. Get Initial Sequence
+        if current_sequence is None:
+            if self.data is None:
+                raise ValueError("No data available. Train or load data first.")
+            
+            # Take last 'seq_len' log returns
+            last_returns = self.data['log_ret'].values[-self.seq_len:] * scale
+            current_sequence = torch.tensor(last_returns, dtype=torch.float32).view(1, self.seq_len, 1) # (1, seq, 1)
+        
+        current_sequence = current_sequence.to(self.device)
+        
+        # Store all simulated volatility paths
+        # Shape: (n_simulations, n_days)
+        all_vol_paths = np.zeros((n_simulations, n_days))
+        
+        with torch.no_grad():
+            for i in range(n_simulations):
+                # Copy the starting sequence for this path
+                seq = current_sequence.clone()
+                
+                for t in range(n_days):
+                    # a. Predict Variance for next day
+                    pred_var_scaled = self.model(seq).item()  # output is (100*r)^2
+                    
+                    # Store prediction (convert to Annualized Vol)
+                    # pred_var = pred_var_scaled / 10000
+                    # vol = sqrt(pred_var) * sqrt(252)
+                    # Simplified: sqrt(pred_var_scaled) / 100 * 15.87...
+                    vol_ann = (np.sqrt(pred_var_scaled) / scale) * np.sqrt(252)
+                    all_vol_paths[i, t] = vol_ann
+                    
+                    # b. Monte Carlo Step: Sample a return based on predicted variance
+                    # We need a return r_{t+1} to feed back in.
+                    # r_{t+1} ~ N(0, \sigma_{t+1})
+                    # \sigma_{scaled} = sqrt(pred_var_scaled)
+                    sigma_scaled = np.sqrt(pred_var_scaled)
+                    simulated_return_scaled = np.random.normal(0, sigma_scaled)
+                    
+                    # c. Update Sequence (Shift window)
+                    # seq is (1, 60, 1)
+                    # We want to remove first element, add new element at end
+                    new_val = torch.tensor([[[simulated_return_scaled]]], dtype=torch.float32).to(self.device)
+                    seq = torch.cat((seq[:, 1:, :], new_val), dim=1)
+        
+        # 3. Aggregation
+        mean_forecast = np.mean(all_vol_paths, axis=0)
+        p5 = np.percentile(all_vol_paths, 5, axis=0)
+        p95 = np.percentile(all_vol_paths, 95, axis=0)
+        
+        return mean_forecast, p5, p95
 
 if __name__ == "__main__":
     from src.evaluation.backtest import VolatilityBacktester
