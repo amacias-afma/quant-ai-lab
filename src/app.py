@@ -31,22 +31,52 @@ def get_asset_dictionary():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/tickers', methods=['GET'])
-def get_tickers():
-    """Returns list of {code, name} for dropdown."""
-    # query = f"""
-    #     SELECT DISTINCT ticker, asset_name 
-    #     FROM `{PROJECT_ID}.market_data.historical_prices`
-    #     ORDER BY ticker
-    # """
+def get_market_overview():
+    """Returns summary for the Market Monitor table."""
+    query = f"""
+        SELECT 
+            ticker, 
+            asset_name, 
+            stress_rate_2020,  -- NEW FIELD
+            hist_rate,         -- Recent Historical Rate
+            garch_rate,        -- Recent GARCH Rate
+            lstm_rate          -- Recent LSTM Rate
+        FROM `{PROJECT_ID}.market_data.dashboard_forecasts`
+        ORDER BY ticker
+    """
     try:
-        asset_dictionary = get_asset_dictionary()
-
-        # query_job = client.query(query)
-        # Return object for cleaner 
-        data = [{"code": key, "name": item} for key, item in asset_dictionary.items()]
+        query_job = client.query(query)
+        data = []
+        for row in query_job:
+            data.append({
+                "code": row.ticker,
+                "name": row.asset_name,
+                "stress_2020": row.stress_rate_2020,
+                "hist_recent": row.hist_rate,
+                "garch_recent": row.garch_rate,
+                "lstm_recent": row.lstm_rate
+            })
         return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# @app.route('/tickers', methods=['GET'])
+# def get_tickers():
+#     """Returns list of {code, name} for dropdown."""
+#     # query = f"""
+#     #     SELECT DISTINCT ticker, asset_name 
+#     #     FROM `{PROJECT_ID}.market_data.historical_prices`
+#     #     ORDER BY ticker
+#     # """
+#     try:
+#         asset_dictionary = get_asset_dictionary()
+
+#         # query_job = client.query(query)
+#         # Return object for cleaner 
+#         data = [{"code": key, "name": item} for key, item in asset_dictionary.items()]
+#         return jsonify(data)
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
 
 @app.route('/predict', methods=['POST'])
 def get_forecast():
@@ -87,7 +117,27 @@ def get_forecast():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
+@app.route('/research/summary', methods=['GET'])
+def get_research_summary():
+    """Returns the aggregated research conclusions."""
+    query = f"""
+        SELECT * FROM `{PROJECT_ID}.market_data.research_results`
+        WHERE scenario = 'Covid_Crash'
+    """
+    df = client.query(query).to_dataframe()
+    
+    # Calculate quantitative conclusions
+    avg_lstm_breach = df['lstm_breach'].mean()
+    avg_garch_breach = df['garch_breach'].mean()
+    total_savings = df['capital_savings'].sum()
+    
+    return jsonify({
+        "avg_lstm_breach": avg_lstm_breach,
+        "avg_garch_breach": avg_garch_breach,
+        "lstm_win_rate": (df['lstm_breach'] < df['garch_breach']).mean() * 100,
+        "total_capital_impact": total_savings,
+        "details": df.to_dict(orient='records')
+    })
 
 # @app.route('/predict', methods=['POST'])
 # def get_forecast():

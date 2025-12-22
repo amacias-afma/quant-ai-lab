@@ -30,6 +30,29 @@
         .table-success-soft {
             background-color: #f0fff4;
         }
+
+        .clickable-row {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .clickable-row:hover {
+            background-color: #e9ecef;
+        }
+
+        .accordion-button:not(.collapsed) {
+            background-color: #e7f1ff;
+            color: #0c63e4;
+        }
+
+        /* New Style for Research Cards */
+        .metric-card {
+            transition: transform 0.2s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
     </style>
 </head>
 
@@ -39,186 +62,211 @@
 
         <div class="text-center mb-5">
             <h1 class="fw-bold text-primary">Quant Risk Lab</h1>
-            <p class="text-muted">Basel III Capital Efficiency: Econometrics vs Deep Learning</p>
+            <p class="lead text-muted">Next-Gen Capital Optimization: Deep Learning vs. Econometrics</p>
         </div>
 
         <div class="accordion mb-5" id="accordionExample">
-            <div class="accordion-item">
+            <div class="accordion-item border-0 shadow-sm">
                 <h2 class="accordion-header" id="headingOne">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
                         data-bs-target="#collapseOne">
-                        <strong>📢 The Business Case: Why Volatility Modeling Matters</strong>
+                        <strong>💼 Executive Summary: The Business Case</strong>
                     </button>
                 </h2>
                 <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionExample">
-                    <div class="accordion-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-7">
-                                <h5>The Basel III Problem</h5>
-                                <p>Banks must hold capital buffers (VaR) to cover potential losses.
-                                    If a model reacts too slowly to a crash, the bank holds too little capital and faces
-                                    regulatory fines ("Breach").</p>
-                                <p><strong>Goal:</strong> Create a "Smart Shield" that stays low during calm markets
-                                    (saving money) but spikes instantly before a crash (saving the bank).</p>
-                            </div>
-                            <div class="col-md-5">
-                                <div class="card p-3 bg-light border">
-                                    <small class="text-muted text-uppercase fw-bold">Simulation: $10M Portfolio</small>
-                                    <div class="d-flex justify-content-between mt-2">
-                                        <span>📉 Market Shock:</span>
-                                        <span class="text-danger fw-bold">-$400,000 Loss</span>
-                                    </div>
-                                    <hr class="my-2">
-                                    <div class="d-flex justify-content-between">
-                                        <span>🐢 GARCH Shield:</span>
-                                        <span class="text-danger">$279k (BREACH)</span>
-                                    </div>
-                                    <div class="d-flex justify-content-between">
-                                        <span>🚀 LSTM Shield:</span>
-                                        <span class="text-success">$815k (SAFE)</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="accordion-body bg-white">
+                        <p><strong>The Problem:</strong> Traditional models (GARCH) react too slowly to crashes, causing
+                            regulatory breaches, or hold too much capital during calm periods ("Dead Money").</p>
+                        <p><strong>The Solution:</strong> Our Deep LSTM model detects volatility precursors instantly,
+                            optimizing capital efficiency.</p>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="card p-4 mb-5 border-primary border-2">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h5 class="card-title fw-bold text-primary">🔬 Research Lab: The "Grand Finale" Stress Test</h5>
+                    <p class="text-muted small mb-0">Aggregate results from the <strong>Covid-19 Crisis
+                            Simulation</strong> across 9 diversified asset classes.</p>
+                </div>
+                <span class="badge bg-primary p-2">9-Asset Study</span>
+            </div>
+
+            <div class="row text-center mb-4">
+                <div class="col-md-4">
+                    <div class="card metric-card bg-light p-3">
+                        <h6 class="text-muted text-uppercase">AI Win Rate</h6>
+                        <h2 class="fw-bold text-success" id="resWinRate">--%</h2>
+                        <small>LSTM beat GARCH</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card metric-card bg-light p-3">
+                        <h6 class="text-muted text-uppercase">Capital Efficiency</h6>
+                        <h2 class="fw-bold text-primary" id="resSavings">$--</h2>
+                        <small>Avg. Capital Freed Up</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card metric-card bg-light p-3">
+                        <h6 class="text-muted text-uppercase">Safety Score</h6>
+                        <h2 class="fw-bold text-dark" id="resSafety">--%</h2>
+                        <small>Avg. Breach Rate (LSTM)</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#researchDetails">
+                    View Asset Breakdown ▼
+                </button>
+            </div>
+            <div class="collapse mt-3" id="researchDetails">
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Asset</th>
+                                <th>GARCH Breach</th>
+                                <th>LSTM Breach</th>
+                                <th>Savings</th>
+                            </tr>
+                        </thead>
+                        <tbody id="researchTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-4 mb-5">
+            <h5 class="card-title fw-bold text-success">🚀 Live Portfolio Monitor (Last 100 Days)</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Asset</th>
+                            <th class="text-center">GARCH Breaches</th>
+                            <th class="text-center">LSTM Breaches</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summaryTableBody">
+                        <tr>
+                            <td colspan="4" class="text-center py-3">Loading Live Data...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
         <div class="row justify-content-center mb-4">
             <div class="col-md-6">
-                <div class="card p-4">
-                    <label class="form-label fw-bold">Select Portfolio Asset ($1M Notional)</label>
-                    <div class="input-group">
-                        <select id="tickerInput" class="form-select">
-                            <option selected disabled>Loading assets...</option>
-                        </select>
-                        <button class="btn btn-primary" onclick="runAnalysis()">Run Backtest</button>
-                    </div>
+                <div class="input-group">
+                    <select id="tickerInput" class="form-select">
+                        <option selected disabled>Select Asset...</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="runAnalysis()">Analyze</button>
                 </div>
             </div>
         </div>
 
         <div id="resultsArea" style="display: none;">
-
-            <div class="text-center mb-4">
-                <h3 id="assetTitle" class="fw-bold">--</h3>
-            </div>
-
-            <div class="card p-4 mb-4">
-                <h5 class="card-title fw-bold mb-3">📊 Capital Efficiency Report (Last 100 Days)</h5>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Model</th>
-                                <th>Avg Capital Held</th>
-                                <th>Efficiency vs Perfect</th>
-                                <th>Regulatory Breaches</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td class="fw-bold text-danger">Benchmark (GARCH)</td>
-                                <td id="garchCap">--</td>
-                                <td id="garchEff" class="text-muted">--</td>
-                                <td id="garchBreach">--</td>
-                                <td><span class="badge bg-secondary">Standard</span></td>
-                            </tr>
-                            <tr class="table-success-soft">
-                                <td class="fw-bold text-success">Challenger (Deep LSTM)</td>
-                                <td id="lstmCap">--</td>
-                                <td id="lstmEff" class="fw-bold text-success">--</td>
-                                <td id="lstmBreach">--</td>
-                                <td><span class="badge bg-success">Recommended</span></td>
-                            </tr>
-                            <tr class="text-muted small">
-                                <td><i>Realized (Perfect Sight)</i></td>
-                                <td id="realCap">--</td>
-                                <td><i>Baseline</i></td>
-                                <td><i>0</i></td>
-                                <td><i>Target</i></td>
-                            </tr>
-                        </tbody>
-                    </table>
+            <div class="card p-4">
+                <h5 id="assetTitle" class="card-title fw-bold mb-3">--</h5>
+                <div style="height: 400px; width: 100%;">
+                    <canvas id="riskChart"></canvas>
                 </div>
             </div>
+        </div>
 
-            <div class="card p-4">
-                <h5 class="card-title fw-bold">🛡️ Capital Shield Analysis</h5>
-                <p class="text-muted small">
-                    Bars = <strong>Daily Loss</strong> (Positive magnitude of negative returns).<br>
-                    Lines = <strong>Required Capital (VaR)</strong>. If a Bar rises above the Line, it is a
-                    <strong>Regulatory Breach</strong>.
-                </p>
-                <canvas id="riskChart" height="120"></canvas>
-            </div>
-        </div>
     </div>
-    <div class="card p-4 mb-4">
-        <h5 class="card-title fw-bold mb-3">📊 Model Validation Report (Last 100 Days)</h5>
-        <div class="table-responsive">
-            <table class="table table-bordered align-middle text-center">
-                <thead class="table-light">
-                    <tr>
-                        <th>Model</th>
-                        <th>Target Breach %</th>
-                        <th>Actual Breach %</th>
-                        <th>Result (Coverage)</th>
-                        <th>Avg Capital Held</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr class="text-muted">
-                        <td class="text-start fw-bold">Historical (Basic)</td>
-                        <td>1.0%</td>
-                        <td id="histRate">--</td>
-                        <td id="histStatus">--</td>
-                        <td id="histCap">--</td>
-                    </tr>
-                    <tr>
-                        <td class="text-start fw-bold text-danger">GARCH (Parametric)</td>
-                        <td>1.0%</td>
-                        <td id="garchRate">--</td>
-                        <td id="garchStatus">--</td>
-                        <td id="garchCap">--</td>
-                    </tr>
-                    <tr class="table-success-soft">
-                        <td class="text-start fw-bold text-success">Deep LSTM (AI)</td>
-                        <td>1.0%</td>
-                        <td id="lstmRate">--</td>
-                        <td id="lstmStatus">--</td>
-                        <td id="lstmCap">--</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <div class="text-end text-muted small">
-            * <strong>Coverage Test:</strong> If "Actual %" > 1%, the model is dangerous (Under-estimating). <br>
-            If "Actual %" < 1%, the model is safe but expensive (Over-estimating). <strong>Closer to 1% is
-                better.</strong>
-        </div>
-    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        document.addEventListener("DOMContentLoaded", async () => await loadTickers());
+        document.addEventListener("DOMContentLoaded", async () => {
+            await loadResearchSummary(); // NEW: Load the Grand Finale data
+            await loadMarketOverview();  // Load the Live Monitor
+        });
 
-        async function loadTickers() {
-            const res = await fetch('/tickers');
-            const data = await res.json();
-            const sel = document.getElementById('tickerInput');
-            sel.innerHTML = '<option selected disabled>Select Asset</option>';
-            data.forEach(item => {
-                let opt = document.createElement('option');
-                opt.value = item.code;
-                opt.text = `${item.name} (${item.code})`; // Name + Code
-                sel.appendChild(opt);
-            });
+        // --- NEW: Load Research Study Results ---
+        async function loadResearchSummary() {
+            try {
+                const res = await fetch('/research/summary');
+                const data = await res.json();
+
+                // 1. Update KPI Cards
+                document.getElementById('resWinRate').innerText = data.lstm_win_rate.toFixed(0) + "%";
+                document.getElementById('resSafety').innerText = data.avg_lstm_breach.toFixed(2) + "%";
+
+                const savings = data.total_capital_impact;
+                const sign = savings > 0 ? "+" : "";
+                const color = savings > 0 ? "text-primary" : "text-warning";
+                document.getElementById('resSavings').innerHTML = `<span class="${color}">${sign}$${Math.round(savings).toLocaleString()}</span>`;
+
+                // 2. Update Breakdown Table
+                const tbody = document.getElementById('researchTableBody');
+                tbody.innerHTML = '';
+                data.details.forEach(d => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                    <td>${d.ticker}</td>
+                    <td class="text-danger">${d.garch_breach.toFixed(1)}%</td>
+                    <td class="text-success fw-bold">${d.lstm_breach.toFixed(1)}%</td>
+                    <td>$${Math.round(d.capital_savings).toLocaleString()}</td>
+                `;
+                    tbody.appendChild(tr);
+                });
+
+            } catch (e) {
+                console.warn("Research data not ready yet. Run 'portfolio_study.py' first.");
+                document.getElementById('resWinRate').innerText = "N/A";
+            }
         }
 
-        let chart = null;
+        // --- Existing Functions (Live Monitor) ---
+        async function loadMarketOverview() {
+            try {
+                const res = await fetch('/tickers');
+                const data = await res.json();
 
+                const sel = document.getElementById('tickerInput');
+                const tbody = document.getElementById('summaryTableBody');
+
+                sel.innerHTML = '<option selected disabled>Select Asset</option>';
+                tbody.innerHTML = '';
+
+                data.forEach(item => {
+                    // Dropdown
+                    let opt = document.createElement('option');
+                    opt.value = item.code; opt.text = item.name; sel.appendChild(opt);
+
+                    // Table Row
+                    const tr = document.createElement('tr');
+                    tr.className = 'clickable-row';
+                    tr.onclick = () => selectAndRun(item.code);
+                    tr.innerHTML = `
+                    <td class="fw-bold">${item.name}</td>
+                    <td class="text-center">${item.garch_recent.toFixed(2)}%</td>
+                    <td class="text-center text-success fw-bold">${item.lstm_recent.toFixed(2)}%</td>
+                    <td class="text-center"><button class="btn btn-sm btn-outline-primary">View</button></td>
+                `;
+                    tbody.appendChild(tr);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function selectAndRun(ticker) {
+            document.getElementById('tickerInput').value = ticker;
+            runAnalysis();
+        }
+
+        // --- Charting Logic ---
+        let chart = null;
         async function runAnalysis() {
             const ticker = document.getElementById('tickerInput').value;
             const res = await fetch('/predict', {
@@ -228,35 +276,10 @@
             });
             const data = await res.json();
 
-            // Update Title
-            document.getElementById('assetTitle').innerText = `${data.asset_name} (${data.ticker})`;
-            const m = data.metrics;
-            const fmt = (n) => "$" + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+            document.getElementById('assetTitle').innerText = data.asset_name;
+            document.getElementById('resultsArea').style.display = 'block';
 
-            // Function to check calibration
-            function getStatus(rate) {
-                if (rate > 2.0) return '<span class="badge bg-danger">Dangerous (>2%)</span>';
-                if (rate > 1.0) return '<span class="badge bg-warning text-dark">Slight Breach</span>';
-                if (rate === 0) return '<span class="badge bg-info">Conservative (0%)</span>';
-                return '<span class="badge bg-success">Calibrated (~1%)</span>';
-            }
-
-            // Historical Row
-            document.getElementById('histRate').innerText = m.hist_rate.toFixed(1) + "%";
-            document.getElementById('histStatus').innerHTML = getStatus(m.hist_rate);
-            document.getElementById('histCap').innerText = fmt(m.hist_cap);
-
-            // GARCH Row
-            document.getElementById('garchRate').innerText = m.garch_rate.toFixed(1) + "%";
-            document.getElementById('garchStatus').innerHTML = getStatus(m.garch_rate);
-            document.getElementById('garchCap').innerText = fmt(m.garch_cap);
-
-            // LSTM Row
-            document.getElementById('lstmRate').innerText = m.lstm_rate.toFixed(1) + "%";
-            document.getElementById('lstmStatus').innerHTML = getStatus(m.lstm_rate);
-            document.getElementById('lstmCap').innerText = fmt(m.lstm_cap);
-
-            // Update Chart
+            // Draw Chart
             const ctx = document.getElementById('riskChart').getContext('2d');
             if (chart) chart.destroy();
 
@@ -266,228 +289,20 @@
                 data: {
                     labels: data.plot_data.dates,
                     datasets: [
-                        {
-                            type: 'bar',
-                            label: 'Daily Loss',
-                            data: losses,
-                            backgroundColor: 'rgba(108, 117, 125, 0.4)',
-                            order: 4
-                        },
-                        {
-                            type: 'line',
-                            label: 'Historical VaR (Basic)',
-                            data: data.plot_data.hist_var,
-                            borderColor: '#6c757d', // Grey
-                            borderDash: [5, 5],
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            tension: 0, // Stair-step often better for Hist VaR, but line is fine
-                            order: 3
-                        },
-                        {
-                            type: 'line',
-                            label: 'GARCH VaR',
-                            data: data.plot_data.garch_var,
-                            borderColor: '#dc3545',
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            order: 2
-                        },
-                        {
-                            type: 'line',
-                            label: 'LSTM VaR',
-                            data: data.plot_data.lstm_var,
-                            borderColor: '#198754',
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            order: 1
-                        }
+                        { type: 'bar', label: 'Loss', data: losses, backgroundColor: '#adb5bd', order: 3 },
+                        { type: 'line', label: 'GARCH', data: data.plot_data.garch_var, borderColor: '#dc3545', order: 2 },
+                        { type: 'line', label: 'LSTM', data: data.plot_data.lstm_var, borderColor: '#198754', order: 1 }
                     ]
                 },
                 options: {
                     responsive: true,
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: {
-                        tooltip: { callbacks: { label: (c) => c.dataset.label + ': $' + Math.round(c.raw).toLocaleString() } }
-                    }
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false }
                 }
             });
-
-            // // Fill Table
-            // const m = data.metrics;
-            // const fmt = (n) => "$" + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
-
-            // document.getElementById('garchCap').innerText = fmt(m.garch_avg_cap);
-            // document.getElementById('garchBreach').innerText = m.garch_breaches + " Days";
-
-            // document.getElementById('lstmCap').innerText = fmt(m.lstm_avg_cap);
-            // document.getElementById('lstmBreach').innerText = m.lstm_breaches + " Days";
-
-            // document.getElementById('realCap').innerText = fmt(m.real_avg_cap);
-
-            // const garchDiff = ((m.garch_avg_cap / m.real_avg_cap) - 1) * 100;
-            // const lstmDiff = ((m.lstm_avg_cap / m.real_avg_cap) - 1) * 100;
-
-            // document.getElementById('garchEff').innerText = (garchDiff > 0 ? "+" : "") + garchDiff.toFixed(1) + "%";
-            // document.getElementById('lstmEff').innerText = (lstmDiff > 0 ? "+" : "") + lstmDiff.toFixed(1) + "%";
-
-            // // Draw Chart
-            // const ctx = document.getElementById('riskChart').getContext('2d');
-            // if (chart) chart.destroy();
-
-            // // Calculate LOSSES (PnL < 0)
-            // // We act as if positive PnL is 0 risk, negative PnL is positive Risk Magnitude
-            // const losses = data.plot_data.pnl.map(p => p < 0 ? Math.abs(p) : 0);
-
-            // chart = new Chart(ctx, {
-            //     data: {
-            //         labels: data.plot_data.dates,
-            //         datasets: [
-            //             {
-            //                 type: 'bar',
-            //                 label: 'Daily Loss',
-            //                 data: losses,
-            //                 backgroundColor: 'rgba(108, 117, 125, 0.4)',
-            //                 barPercentage: 0.6,
-            //                 order: 4
-            //             },
-            //             {
-            //                 type: 'line',
-            //                 label: 'Realized VaR (Historical)',
-            //                 data: data.plot_data.real_var,
-            //                 borderColor: '#000000', // Black
-            //                 borderWidth: 2,
-            //                 borderDash: [5, 5], // Dashed
-            //                 pointRadius: 0,
-            //                 tension: 0.1,
-            //                 order: 3
-            //             },
-            //             {
-            //                 type: 'line',
-            //                 label: 'GARCH Shield',
-            //                 data: data.plot_data.garch_var,
-            //                 borderColor: '#dc3545',
-            //                 borderWidth: 2,
-            //                 pointRadius: 0,
-            //                 tension: 0.1,
-            //                 order: 2
-            //             },
-            //             {
-            //                 type: 'line',
-            //                 label: 'LSTM Shield',
-            //                 data: data.plot_data.lstm_var,
-            //                 borderColor: '#198754',
-            //                 borderWidth: 2,
-            //                 pointRadius: 0,
-            //                 tension: 0.1,
-            //                 order: 1
-            //             }
-            //         ]
-            //     },
-            //     options: {
-            //         responsive: true,
-            //         interaction: { mode: 'index', intersect: false },
-            //         plugins: {
-            //             tooltip: {
-            //                 callbacks: {
-            //                     label: function (context) {
-            //                         return context.dataset.label + ': $' + Math.round(context.raw).toLocaleString();
-            //                     }
-            //                 }
-            //             }
-            //         }
-            //     }
-            // });
-
-            // document.getElementById('resultsArea').style.display = 'block';
         }
     </script>
-    <!-- <script>
-        // ... inside runAnalysis() ...
 
-        const m = data.metrics;
-        const fmt = (n) => "$" + n.toLocaleString(undefined, {maximumFractionDigits:0});
-        
-        // Function to check calibration
-        function getStatus(rate) {
-            if (rate > 2.0) return '<span class="badge bg-danger">Dangerous (>2%)</span>';
-            if (rate > 1.0) return '<span class="badge bg-warning text-dark">Slight Breach</span>';
-            if (rate === 0) return '<span class="badge bg-info">Conservative (0%)</span>';
-            return '<span class="badge bg-success">Calibrated (~1%)</span>';
-        }
-
-        // Historical Row
-        document.getElementById('histRate').innerText = m.hist_rate.toFixed(1) + "%";
-        document.getElementById('histStatus').innerHTML = getStatus(m.hist_rate);
-        document.getElementById('histCap').innerText = fmt(m.hist_cap);
-
-        // GARCH Row
-        document.getElementById('garchRate').innerText = m.garch_rate.toFixed(1) + "%";
-        document.getElementById('garchStatus').innerHTML = getStatus(m.garch_rate);
-        document.getElementById('garchCap').innerText = fmt(m.garch_cap);
-
-        // LSTM Row
-        document.getElementById('lstmRate').innerText = m.lstm_rate.toFixed(1) + "%";
-        document.getElementById('lstmStatus').innerHTML = getStatus(m.lstm_rate);
-        document.getElementById('lstmCap').innerText = fmt(m.lstm_cap);
-
-        // Update Chart
-        const ctx = document.getElementById('riskChart').getContext('2d');
-        if (chart) chart.destroy();
-
-        const losses = data.plot_data.pnl.map(p => p < 0 ? Math.abs(p) : 0);
-
-        chart = new Chart(ctx, {
-            data: {
-                labels: data.plot_data.dates,
-                datasets: [
-                    {
-                        type: 'bar',
-                        label: 'Daily Loss',
-                        data: losses,
-                        backgroundColor: 'rgba(108, 117, 125, 0.4)',
-                        order: 4
-                    },
-                    {
-                        type: 'line',
-                        label: 'Historical VaR (Basic)',
-                        data: data.plot_data.hist_var,
-                        borderColor: '#6c757d', // Grey
-                        borderDash: [5, 5],
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        tension: 0, // Stair-step often better for Hist VaR, but line is fine
-                        order: 3
-                    },
-                    {
-                        type: 'line',
-                        label: 'GARCH VaR',
-                        data: data.plot_data.garch_var,
-                        borderColor: '#dc3545',
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        order: 2
-                    },
-                    {
-                        type: 'line',
-                        label: 'LSTM VaR',
-                        data: data.plot_data.lstm_var,
-                        borderColor: '#198754',
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        order: 1
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    tooltip: { callbacks: { label: (c) => c.dataset.label + ': $' + Math.round(c.raw).toLocaleString() } }
-                }
-            }
-        });
-    </script> -->
 </body>
 
 </html>
