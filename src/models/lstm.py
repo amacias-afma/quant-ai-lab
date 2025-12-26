@@ -4,6 +4,8 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+
 # --- A. Custom Loss Function (QLIKE) ---
 class Log_QLIKE_Loss(nn.Module):
     """
@@ -99,19 +101,19 @@ def create_sequences(returns, seq_length=60):
     return torch.tensor(np.array(X), dtype=torch.float32), \
            torch.tensor(np.array(y), dtype=torch.float32)
 
-def lstm_fit(df_clean, seq_len):
+def lstm_fit(train_data, seq_len, test_data):
     # Data Prep
-    X_train, y_train = create_sequences_log(df_clean, seq_length=seq_len)
+    X_train, y_train = create_sequences_log(train_data, seq_length=seq_len)
 
     # Initialize
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = VolatilityLSTM(input_size=2).to(device)
+    lstm_model   = VolatilityLSTM(input_size=2).to(device)
     criterion = Log_QLIKE_Loss()
-    optimizer = optim.Adam(model.parameters(), lr=0.005)
+    optimizer = optim.Adam(lstm_model.parameters(), lr=0.005)
 
     # Train
     print(f"Training LSTM on {device}...")
-    model.train()
+    lstm_model.train()
     epochs = 150 # 150 is good for log-space
     
     for epoch in range(epochs):
@@ -119,16 +121,16 @@ def lstm_fit(df_clean, seq_len):
         y_batch = y_train.to(device)
         
         optimizer.zero_grad()
-        pred_log_var = model(X_batch).squeeze() # Output is Log-Variance
+        pred_log_var = lstm_model(X_batch).squeeze() # Output is Log-Variance
         
         loss = criterion(pred_log_var, y_batch)
         loss.backward()
         optimizer.step()
         
     # In-Sample Prediction (Optional, for checking fit)
-    model.eval()
+    lstm_model.eval()
     with torch.no_grad():
-        pred_log_var = model(X_train.to(device)).squeeze().cpu().numpy()
+        pred_log_var = lstm_model(X_train.to(device)).squeeze().cpu().numpy()
 
     # --- CORRECTION START ---
     # 1. Exponential to invert Log
@@ -141,62 +143,65 @@ def lstm_fit(df_clean, seq_len):
     lstm_vol_annual = np.sqrt(pred_var_lstm) * np.sqrt(252)
     # --- CORRECTION END ---
 
-    return model, lstm_vol_annual
+    # 3b. Prepare Test Sequences (The Key Fix)
+    # To predict the first test day, we need the last 'seq_len' days of train data.
+    # Get the "Context Window"
+    lookback_data = train_data.iloc[-seq_len:]
+    
+    # Combine lookback + test data to generate valid sequences for the test period
+    input_for_test = pd.concat([lookback_data, test_data])
+    
+    # Generate sequences (X_test)
+    # Note: create_sequences_log returns Tensors
+    X_test, _ = create_sequences_log(input_for_test, seq_length=seq_len)
+    
+    # 3c. Predict on Test Data
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    lstm_model.eval()
 
-# def lstm_fit(df_clean, seq_len):
-#     # Use the full cleaned dataset for this demonstration
-#     # X_train, y_train = create_sequences_log(df_clean['log_ret'], seq_length=seq_len)
-#     X_train, y_train = create_sequences_log(df_clean, seq_length=seq_len)
-
-
-#     # 2. Initialize Model
-#     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#     model = VolatilityLSTM(input_size=2).to(device)
-#     criterion = Log_QLIKE_Loss()
-#     optimizer = optim.Adam(model.parameters(), lr=0.005)
-
-#     # 3. Training Loop
-#     print(f"Training LSTM on {device}...")
-#     model.train()
-#     epochs = 150
-#     loss_history = []
-
-#     for epoch in range(epochs):
-#         X_batch = X_train.to(device)
-#         y_batch = y_train.to(device)
+    with torch.no_grad():
+        # A. Re-run model on Training Data to get in-sample residuals
+        X_train, _ = create_sequences_log(train_data, seq_length=seq_len)
+        pred_log_train = lstm_model(X_train.to(device)).squeeze().cpu().numpy()
         
-#         optimizer.zero_grad()
+        # B. Convert to Annualized Volatility
+        # (exp(log_var) / 10000)^0.5 * sqrt(252)
+        vol_train_annual = np.sqrt(np.exp(pred_log_train) / 10000) * np.sqrt(252)
         
-#         # Forward Pass
-#         pred_variance = model(X_batch).squeeze()
+        # C. Align Training Returns
+        # LSTM consumes the first 60 days for context, so predictions start at index 60
+        train_returns_aligned = train_data.iloc[seq_len:]
         
-#         # Calculate Loss (QLIKE)
-#         loss = criterion(pred_variance, y_batch)
+        # D. Calculate Standardized Residuals (z = r / sigma)
+        # We use daily volatility for normalization (vol_annual / sqrt(252))
+        vol_train_daily = vol_train_annual / np.sqrt(252)
+        train_z_scores = train_returns_aligned.values / vol_train_daily
         
-#         # Backward Pass
-#         loss.backward()
-#         optimizer.step()
+        # E. Find the Empirical 99% Z-score
+        # We look at the 1st percentile (losses) and take the absolute value
+        # If the data was Normal, this would be ~2.33. For Crypto/Crisis, it might be 3.0+
+        empirical_1_percentile = np.percentile(train_z_scores, 1)
+        calibrated_z = abs(empirical_1_percentile)
         
-#         loss_history.append(loss.item())
-#         if (epoch+1) % 10 == 0:
-#             print(f"Epoch {epoch+1}/{epochs} | QLIKE Loss: {loss.item():.4f}")
+        # Safety clamp: Don't let it be lower than Normal (2.33)
+        calibrated_z = max(calibrated_z, 2.33)
 
-#     # Plot Loss
-#     plt.figure(figsize=(8, 4))
-#     plt.plot(loss_history)
-#     plt.title("LSTM Training convergence (QLIKE Loss)")
-#     plt.xlabel("Epoch")
-#     plt.ylabel("Loss")
-#     plt.show()
-#     # 4. Generate Predictions
-#     model.eval()
-#     with torch.no_grad():
-#         pred_var_scaled = model(X_train.to(device)).squeeze().cpu().numpy()
-
-#     # 5. Invert Scaling
-#     pred_var = pred_var_scaled / 100# Un-scale predictions: (Value / 100)^2 -> Value / 10000
-#     pred_var_lstm = pred_var_scaled / 10000
-#     # Convert to Annualized Volatility
-#     lstm_vol_annual = np.sqrt(pred_var_lstm) * np.sqrt(252)
-
-#     return model, lstm_vol_annual
+        # Forward pass
+        pred_log_var = lstm_model(X_test.to(device)).squeeze().cpu().numpy()
+        
+    # 3d. Convert predictions back to Annualized Volatility
+    # Step 1: Exp() to get Variance (since output is Log-Variance)
+    pred_var_scaled = np.exp(pred_log_var)
+    
+    # Step 2: Un-scale (Divide by 100^2 because input was scaled by 100)
+    pred_var = pred_var_scaled / 10000 
+    
+    # Step 3: Annualize (Sqrt to get Daily Vol -> * Sqrt(252))
+    lstm_vol_annual = np.sqrt(pred_var) * np.sqrt(252)
+    
+    # 3e. Align with Test Index
+    # The generated predictions correspond exactly to the test_data length
+    lstm_vol_test = pd.Series(lstm_vol_annual, index=test_data.index, name="LSTM_Vol")
+    lstm_vol_test = lstm_vol_test.ewm(span=5, adjust=False).mean()
+    
+    return lstm_vol_test, calibrated_z

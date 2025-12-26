@@ -141,6 +141,88 @@
                 </div>
             </div>
         </div>
+        <div class="card p-4 mb-5 border-0 shadow-sm">
+            <h5 class="card-title fw-bold">📊 Model Stability Analysis (27 Stress Tests)</h5>
+            <p class="text-muted small">
+                Results from <strong>9 Assets × 3 Crises</strong> (27 total simulations).<br>
+                <strong>The Goal:</strong> Be consistently close to the <strong>1.0% Target</strong> (Green Line). <br>
+                <em>Lower spread = Higher Reliability. High outliers = Dangerous Model.</em>
+            </p>
+
+            <div style="height: 350px; width: 100%;">
+                <canvas id="distChart"></canvas>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", async () => {
+                await loadResearchSummary();
+                await loadDistributionChart(); // NEW
+                await loadMarketOverview();
+            });
+
+            async function loadDistributionChart() {
+                try {
+                    const res = await fetch('/research/distribution');
+                    const datasets = await res.json();
+
+                    const ctx = document.getElementById('distChart').getContext('2d');
+
+                    new Chart(ctx, {
+                        type: 'scatter',
+                        data: { datasets: datasets },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: {
+                                    type: 'linear',
+                                    position: 'bottom',
+                                    min: 0.5,
+                                    max: 3.5,
+                                    ticks: {
+                                        callback: function (value) {
+                                            if (value === 1) return 'Historical';
+                                            if (value === 2) return 'GARCH';
+                                            if (value === 3) return 'Deep LSTM';
+                                            return '';
+                                        }
+                                    },
+                                    grid: { display: false }
+                                },
+                                y: {
+                                    title: { display: true, text: 'Breach Rate (%)' },
+                                    suggestedMin: 0,
+                                    suggestedMax: 6
+                                }
+                            },
+                            plugins: {
+                                annotation: {
+                                    annotations: {
+                                        line1: {
+                                            type: 'line',
+                                            yMin: 1.0,
+                                            yMax: 1.0,
+                                            borderColor: 'green',
+                                            borderWidth: 2,
+                                            borderDash: [5, 5],
+                                            label: { content: 'Target (1%)', enabled: true, position: 'end' }
+                                        }
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            return ctx.raw.y.toFixed(2) + "% Breach";
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } catch (e) { console.error("Dist Chart Error", e); }
+            }
+        </script>
 
         <div class="card p-4 mb-5">
             <h5 class="card-title fw-bold text-success">🚀 Live Portfolio Monitor (Last 100 Days)</h5>

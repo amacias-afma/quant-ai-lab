@@ -60,6 +60,45 @@ def get_market_overview():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/research/distribution', methods=['GET'])
+def get_distribution():
+    """Returns granular breach rates for the box/scatter plot."""
+    query = f"""
+        SELECT * FROM `{PROJECT_ID}.market_data.research_distribution`
+    """
+    try:
+        df = client.query(query).to_dataframe()
+        
+        # Format for Chart.js Scatter
+        # We map models to X-coordinates: Hist=1, GARCH=2, LSTM=3
+        datasets = []
+        
+        models = [
+            ('hist_breach', 'Historical (Benchmark)', '#6c757d'),
+            ('garch_breach', 'GARCH (Parametric)', '#dc3545'),
+            ('lstm_breach', 'Deep LSTM (AI)', '#198754')
+        ]
+        
+        for col, label, color in models:
+            points = []
+            for val in df[col].values:
+                # Add jitter to X for visibility (Strip Plot effect)
+                jitter = (hash(str(val)) % 100) / 500 - 0.1 
+                x_base = models.index((col, label, color)) + 1
+                points.append({'x': x_base + jitter, 'y': val})
+                
+            datasets.append({
+                'label': label,
+                'data': points,
+                'backgroundColor': color,
+                'borderColor': color,
+                'pointRadius': 4
+            })
+            
+        return jsonify(datasets)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # @app.route('/tickers', methods=['GET'])
 # def get_tickers():
 #     """Returns list of {code, name} for dropdown."""
@@ -125,7 +164,9 @@ def get_research_summary():
         WHERE scenario = 'Covid_Crash'
     """
     df = client.query(query).to_dataframe()
-    
+    print('df.head() '*5)
+
+    print(df.head())
     # Calculate quantitative conclusions
     avg_lstm_breach = df['lstm_breach'].mean()
     avg_garch_breach = df['garch_breach'].mean()
