@@ -2,6 +2,7 @@ import os
 import sys
 import numpy as np
 import pandas as pd
+import json
 import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
@@ -84,7 +85,7 @@ class PortfolioStudy:
         df = df.dropna()
         start_date, end_date = dates
         
-        print(df.head())
+        # print(df.head())
         # 1. Split Data
         train_mask = df.index < start_date
         test_mask = (df.index >= start_date) & (df.index <= end_date)
@@ -102,28 +103,42 @@ class PortfolioStudy:
         var_garch = res_bt["var_garch"]
         var_hist = res_bt["var_hist"]
         var_lstm = res_bt["var_lstm"]
-
-        b_hist = res_bt["breach_hist"]
-        b_garch = res_bt["breach_garch"]
-        b_lstm = res_bt["breach_lstm"]
-
+        
         daily_loss = res_bt["daily_loss"]
         dates = res_bt["test_data"].index
+
+        b_hist = float((daily_loss > var_hist).mean() * 100)
+        b_garch = float((daily_loss > var_garch).mean() * 100)
+        b_lstm = float((daily_loss > var_lstm).mean() * 100)
+        # Also ensure these are floats
+        cap_garch = float(var_garch.mean())
+        cap_lstm = float(var_lstm.mean())
         
+        timeseries_data = {
+            "dates": test_data.index.strftime('%Y-%m-%d').tolist(),
+            "loss": daily_loss.fillna(0).tolist(),
+            "var_hist": var_hist.fillna(0).tolist(),
+            "var_garch": var_garch.fillna(0).tolist(),
+            "var_lstm": var_lstm.fillna(0).tolist()
+        }
         return {
-            "Ticker": ticker,
-            "Scenario": scenario_name,
-            "Hist_Breach": b_hist,
-            "GARCH_Breach": b_garch,
-            "LSTM_Breach": b_lstm,
-            # "Capital_Savings": cap_garch - cap_lstm, # Positive = LSTM Saved Money
-            "Data": { # Save series for plotting
-                "Dates": test_data.index,
-                "Loss": daily_loss,
-                "VaR_Hist": var_hist,
-                "VaR_GARCH": var_garch,
-                "VaR_LSTM": var_lstm
-            }
+            "ticker": ticker,
+            "scenario": scenario_name,
+            "hist_breach": b_hist,
+            "garch_breach": b_garch,
+            "lstm_breach": b_lstm,
+            "garch_capital": cap_garch,
+            "lstm_capital": cap_lstm,
+            "capital_savings": cap_garch - cap_lstm, # Positive = LSTM Saved Money
+            "timeseries_json": json.dumps(timeseries_data)
+            # "data": { # Save series for plotting
+            #     "dates": test_data.index,
+            #     "loss": daily_loss,
+            #     "var_hist": var_hist,
+            #     "var_garch": var_garch,
+            #     "var_lstm": var_lstm
+            # },
+            # "timeseries_data": timeseries_data
         }
 
     def run_full_study(self):
@@ -139,6 +154,9 @@ class PortfolioStudy:
 
         # Save to BigQuery
         df = pd.DataFrame(self.results)
+        # print('results')
+        # print(df.head())
+        
         table_id = f"{PROJECT_ID}.market_data.research_distribution"
         df.to_gbq(table_id, project_id=PROJECT_ID, if_exists='replace')
         print("✅ Study Complete. Data saved to BigQuery.")
@@ -182,10 +200,10 @@ class PortfolioStudy:
             ax.plot(dates, d['Data']['VaR_GARCH'], 'b-', alpha=0.6, label='GARCH')
             ax.plot(dates, d['Data']['VaR_LSTM'], 'r-', linewidth=1.5, label='LSTM (AI)')
             
-            # Title with Metrics
-            print('----------------') 
-            print(d)
-            print('----------------') 
+            # # Title with Metrics
+            # print('----------------') 
+            # print(d)
+            # print('----------------') 
 
             # ax.set_title(f"{d['Ticker']}\nLSTM Breach: {d['LSTM_Breach']:.1f}% | GARCH: {d['GARCH_Breach']:.1f}%")
 
@@ -197,25 +215,63 @@ class PortfolioStudy:
         plt.tight_layout()
         plt.savefig("portfolio_stress_test.png")
         print("✅ Plot saved to portfolio_stress_test.png")
-
+    
     def save_summary(self):
         # Convert results to DataFrame for BigQuery
         rows = []
         for r in self.results:
             rows.append({
-                "ticker": r['Ticker'],
-                "scenario": r['Scenario'],
-                "hist_breach": r['Hist_Breach'],
-                "garch_breach": r['GARCH_Breach'],
-                "lstm_breach": r['LSTM_Breach']
-                # "capital_savings": r['Capital_Savings']
+                "ticker": str(r['Ticker']), # Ensure string
+                "scenario": str(r['Scenario']),
+                "hist_breach": float(r['Hist_Breach']), # Ensure float
+                "garch_breach": float(r['GARCH_Breach']),
+                "lstm_breach": float(r['LSTM_Breach']),
+                "capital_savings": float(r['Capital_Savings'])
             })
         
         df = pd.DataFrame(rows)
+        # Force numeric types
+        df['hist_breach'] = pd.to_numeric(df['hist_breach'])
+        df['garch_breach'] = pd.to_numeric(df['garch_breach'])
+        df['lstm_breach'] = pd.to_numeric(df['lstm_breach'])
+        df['capital_savings'] = pd.to_numeric(df['capital_savings'])
+
         # Upload to BigQuery (Replace table)
         table_id = f"{PROJECT_ID}.market_data.research_results"
-        df.to_gbq(table_id, project_id=PROJECT_ID, if_exists='replace')
+        # Schema definition helps BigQuery understand the types
+        job_config = bigquery.LoadJobConfig(
+            schema=[
+                bigquery.SchemaField("ticker", "STRING"),
+                bigquery.SchemaField("scenario", "STRING"),
+                bigquery.SchemaField("hist_breach", "FLOAT"),
+                bigquery.SchemaField("garch_breach", "FLOAT"),
+                bigquery.SchemaField("lstm_breach", "FLOAT"),
+                bigquery.SchemaField("capital_savings", "FLOAT"),
+            ],
+            write_disposition="WRITE_TRUNCATE",
+        )
+
+        self.client.load_table_from_dataframe(df, table_id, job_config=job_config).result()
         print("✅ Research Results uploaded to BigQuery.")
+
+    # def save_summary(self):
+    #     # Convert results to DataFrame for BigQuery
+    #     rows = []
+    #     for r in self.results:
+    #         rows.append({
+    #             "ticker": r['Ticker'],
+    #             "scenario": r['Scenario'],
+    #             "hist_breach": r['Hist_Breach'],
+    #             "garch_breach": r['GARCH_Breach'],
+    #             "lstm_breach": r['LSTM_Breach']
+    #             # "capital_savings": r['Capital_Savings']
+    #         })
+        
+    #     df = pd.DataFrame(rows)
+    #     # Upload to BigQuery (Replace table)
+    #     table_id = f"{PROJECT_ID}.market_data.research_results"
+    #     df.to_gbq(table_id, project_id=PROJECT_ID, if_exists='replace')
+    #     print("✅ Research Results uploaded to BigQuery.")
 
 if __name__ == "__main__":
     study = PortfolioStudy()

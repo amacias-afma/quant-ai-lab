@@ -1,389 +1,161 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hybrid Risk Engine</title>
+    <title>Quant AI Lab | Portfolio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         body {
-            background-color: #f8f9fa;
+            background-color: #0f172a;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
         }
 
-        .card {
-            border: none;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        .hero {
+            padding: 5rem 0;
+            text-align: center;
         }
 
-        .breach-box {
-            border-left: 5px solid #dc3545;
-            background-color: #fff5f5;
+        .hero h1 {
+            font-weight: 800;
+            background: linear-gradient(to right, #38bdf8, #818cf8);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .safe-box {
-            border-left: 5px solid #198754;
-            background-color: #f0fff4;
+        .project-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            transition: transform 0.3s, border-color 0.3s;
+            height: 100%;
         }
 
-        .table-success-soft {
-            background-color: #f0fff4;
-        }
-
-        .clickable-row {
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .clickable-row:hover {
-            background-color: #e9ecef;
-        }
-
-        .accordion-button:not(.collapsed) {
-            background-color: #e7f1ff;
-            color: #0c63e4;
-        }
-
-        /* New Style for Research Cards */
-        .metric-card {
-            transition: transform 0.2s;
-        }
-
-        .metric-card:hover {
+        .project-card:hover {
             transform: translateY(-5px);
+            border-color: #38bdf8;
+        }
+
+        .card-body {
+            padding: 2rem;
+        }
+
+        .badge-tech {
+            background: #334155;
+            color: #94a3b8;
+            font-size: 0.75rem;
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+
+        .btn-launch {
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            border: none;
+            color: white;
+            font-weight: 600;
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .btn-launch:hover {
+            opacity: 0.9;
+        }
+
+        .btn-disabled {
+            background: #334155;
+            color: #64748b;
+            cursor: not-allowed;
         }
     </style>
 </head>
 
 <body>
 
-    <div class="container py-5">
-
-        <div class="text-center mb-5">
-            <h1 class="fw-bold text-primary">Quant Risk Lab</h1>
-            <p class="lead text-muted">Next-Gen Capital Optimization: Deep Learning vs. Econometrics</p>
-        </div>
-
-        <div class="accordion mb-5" id="accordionExample">
-            <div class="accordion-item border-0 shadow-sm">
-                <h2 class="accordion-header" id="headingOne">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#collapseOne">
-                        <strong>💼 Executive Summary: The Business Case</strong>
-                    </button>
-                </h2>
-                <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#accordionExample">
-                    <div class="accordion-body bg-white">
-                        <p><strong>The Problem:</strong> Traditional models (GARCH) react too slowly to crashes, causing
-                            regulatory breaches, or hold too much capital during calm periods ("Dead Money").</p>
-                        <p><strong>The Solution:</strong> Our Deep LSTM model detects volatility precursors instantly,
-                            optimizing capital efficiency.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card p-4 mb-5 border-primary border-2">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h5 class="card-title fw-bold text-primary">🔬 Research Lab: The "Grand Finale" Stress Test</h5>
-                    <p class="text-muted small mb-0">Aggregate results from the <strong>Covid-19 Crisis
-                            Simulation</strong> across 9 diversified asset classes.</p>
-                </div>
-                <span class="badge bg-primary p-2">9-Asset Study</span>
-            </div>
-
-            <div class="row text-center mb-4">
-                <div class="col-md-4">
-                    <div class="card metric-card bg-light p-3">
-                        <h6 class="text-muted text-uppercase">AI Win Rate</h6>
-                        <h2 class="fw-bold text-success" id="resWinRate">--%</h2>
-                        <small>LSTM beat GARCH</small>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card metric-card bg-light p-3">
-                        <h6 class="text-muted text-uppercase">Capital Efficiency</h6>
-                        <h2 class="fw-bold text-primary" id="resSavings">$--</h2>
-                        <small>Avg. Capital Freed Up</small>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card metric-card bg-light p-3">
-                        <h6 class="text-muted text-uppercase">Safety Score</h6>
-                        <h2 class="fw-bold text-dark" id="resSafety">--%</h2>
-                        <small>Avg. Breach Rate (LSTM)</small>
-                    </div>
-                </div>
-            </div>
-
-            <div class="text-center">
-                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse"
-                    data-bs-target="#researchDetails">
-                    View Asset Breakdown ▼
-                </button>
-            </div>
-            <div class="collapse mt-3" id="researchDetails">
-                <div class="table-responsive">
-                    <table class="table table-sm align-middle">
-                        <thead>
-                            <tr>
-                                <th>Asset</th>
-                                <th>GARCH Breach</th>
-                                <th>LSTM Breach</th>
-                                <th>Savings</th>
-                            </tr>
-                        </thead>
-                        <tbody id="researchTableBody">
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        <div class="card p-4 mb-5 border-0 shadow-sm">
-            <h5 class="card-title fw-bold">📊 Model Stability Analysis (27 Stress Tests)</h5>
-            <p class="text-muted small">
-                Results from <strong>9 Assets × 3 Crises</strong> (27 total simulations).<br>
-                <strong>The Goal:</strong> Be consistently close to the <strong>1.0% Target</strong> (Green Line). <br>
-                <em>Lower spread = Higher Reliability. High outliers = Dangerous Model.</em>
-            </p>
-
-            <div style="height: 350px; width: 100%;">
-                <canvas id="distChart"></canvas>
-            </div>
-        </div>
-
-        <script>
-            document.addEventListener("DOMContentLoaded", async () => {
-                await loadResearchSummary();
-                await loadDistributionChart(); // NEW
-                await loadMarketOverview();
-            });
-
-            async function loadDistributionChart() {
-                try {
-                    const res = await fetch('/research/distribution');
-                    const datasets = await res.json();
-
-                    const ctx = document.getElementById('distChart').getContext('2d');
-
-                    new Chart(ctx, {
-                        type: 'scatter',
-                        data: { datasets: datasets },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                x: {
-                                    type: 'linear',
-                                    position: 'bottom',
-                                    min: 0.5,
-                                    max: 3.5,
-                                    ticks: {
-                                        callback: function (value) {
-                                            if (value === 1) return 'Historical';
-                                            if (value === 2) return 'GARCH';
-                                            if (value === 3) return 'Deep LSTM';
-                                            return '';
-                                        }
-                                    },
-                                    grid: { display: false }
-                                },
-                                y: {
-                                    title: { display: true, text: 'Breach Rate (%)' },
-                                    suggestedMin: 0,
-                                    suggestedMax: 6
-                                }
-                            },
-                            plugins: {
-                                annotation: {
-                                    annotations: {
-                                        line1: {
-                                            type: 'line',
-                                            yMin: 1.0,
-                                            yMax: 1.0,
-                                            borderColor: 'green',
-                                            borderWidth: 2,
-                                            borderDash: [5, 5],
-                                            label: { content: 'Target (1%)', enabled: true, position: 'end' }
-                                        }
-                                    }
-                                },
-                                tooltip: {
-                                    callbacks: {
-                                        label: function (ctx) {
-                                            return ctx.raw.y.toFixed(2) + "% Breach";
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    });
-                } catch (e) { console.error("Dist Chart Error", e); }
-            }
-        </script>
-
-        <div class="card p-4 mb-5">
-            <h5 class="card-title fw-bold text-success">🚀 Live Portfolio Monitor (Last 100 Days)</h5>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Asset</th>
-                            <th class="text-center">GARCH Breaches</th>
-                            <th class="text-center">LSTM Breaches</th>
-                            <th class="text-center">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="summaryTableBody">
-                        <tr>
-                            <td colspan="4" class="text-center py-3">Loading Live Data...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="row justify-content-center mb-4">
-            <div class="col-md-6">
-                <div class="input-group">
-                    <select id="tickerInput" class="form-select">
-                        <option selected disabled>Select Asset...</option>
-                    </select>
-                    <button class="btn btn-primary" onclick="runAnalysis()">Analyze</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="resultsArea" style="display: none;">
-            <div class="card p-4">
-                <h5 id="assetTitle" class="card-title fw-bold mb-3">--</h5>
-                <div style="height: 400px; width: 100%;">
-                    <canvas id="riskChart"></canvas>
-                </div>
-            </div>
-        </div>
-
+    <div class="hero container">
+        <h1 class="display-3 mb-3">Quant AI Lab</h1>
+        <p class="lead text-secondary mx-auto" style="max-width: 600px;">
+            Explorando la frontera entre las Finanzas Cuantitativas y el Deep Learning.
+            <br>Modelos de riesgo, trading algorítmico y optimización de portafolios.
+        </p>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <div class="container pb-5">
+        <div class="row g-4">
 
-    <script>
-        document.addEventListener("DOMContentLoaded", async () => {
-            await loadResearchSummary(); // NEW: Load the Grand Finale data
-            await loadMarketOverview();  // Load the Live Monitor
-        });
+            <div class="col-md-4">
+                <div class="project-card">
+                    <div class="card-body d-flex flex-column">
+                        <div class="mb-3">
+                            <span class="badge-tech">Deep Learning</span>
+                            <span class="badge-tech">Risk Mgmt</span>
+                            <span class="badge-tech">PyTorch</span>
+                        </div>
+                        <h4 class="fw-bold">Deep Volatility Engine</h4>
+                        <p class="text-secondary flex-grow-1">
+                            Un motor de riesgo híbrido que supera a GARCH(1,1) utilizando LSTMs calibradas con
+                            distribuciones Student-t para capturar eventos de cola (Cisnes Negros).
+                        </p>
+                        <div class="mt-3">
+                            <ul class="list-unstyled text-secondary small mb-4">
+                                <li>✅ Calibración de Colas Pesadas</li>
+                                <li>✅ Backtesting de Crisis (2008-2022)</li>
+                                <li>✅ Optimización de Capital Basel III</li>
+                            </ul>
+                            <a href="/projects/volatility" class="btn btn-launch">🚀 Abrir Dashboard</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-        // --- NEW: Load Research Study Results ---
-        async function loadResearchSummary() {
-            try {
-                const res = await fetch('/research/summary');
-                const data = await res.json();
+            <div class="col-md-4">
+                <div class="project-card" style="opacity: 0.7;">
+                    <div class="card-body d-flex flex-column">
+                        <div class="mb-3">
+                            <span class="badge-tech">NLP</span>
+                            <span class="badge-tech">LLMs</span>
+                        </div>
+                        <h4 class="fw-bold">Alpha Signals (RAG)</h4>
+                        <p class="text-secondary flex-grow-1">
+                            Análisis de sentimiento en tiempo real de llamadas de ganancias (Earnings Calls) utilizando
+                            Modelos de Lenguaje (LLMs) y Retrieval-Augmented Generation.
+                        </p>
+                        <div class="mt-3">
+                            <button class="btn btn-launch btn-disabled" disabled>🛠️ En Desarrollo</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                // 1. Update KPI Cards
-                document.getElementById('resWinRate').innerText = data.lstm_win_rate.toFixed(0) + "%";
-                document.getElementById('resSafety').innerText = data.avg_lstm_breach.toFixed(2) + "%";
+            <div class="col-md-4">
+                <div class="project-card" style="opacity: 0.7;">
+                    <div class="card-body d-flex flex-column">
+                        <div class="mb-3">
+                            <span class="badge-tech">Reinforcement Learning</span>
+                            <span class="badge-tech">Trading</span>
+                        </div>
+                        <h4 class="fw-bold">RL Market Maker</h4>
+                        <p class="text-secondary flex-grow-1">
+                            Agentes de Aprendizaje por Refuerzo (PPO) entrenados para optimizar la ejecución de órdenes
+                            en libros de órdenes de alta frecuencia (LOB).
+                        </p>
+                        <div class="mt-3">
+                            <button class="btn btn-launch btn-disabled" disabled>🔒 Planeado</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                const savings = data.total_capital_impact;
-                const sign = savings > 0 ? "+" : "";
-                const color = savings > 0 ? "text-primary" : "text-warning";
-                document.getElementById('resSavings').innerHTML = `<span class="${color}">${sign}$${Math.round(savings).toLocaleString()}</span>`;
+        </div>
+    </div>
 
-                // 2. Update Breakdown Table
-                const tbody = document.getElementById('researchTableBody');
-                tbody.innerHTML = '';
-                data.details.forEach(d => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                    <td>${d.ticker}</td>
-                    <td class="text-danger">${d.garch_breach.toFixed(1)}%</td>
-                    <td class="text-success fw-bold">${d.lstm_breach.toFixed(1)}%</td>
-                    <td>$${Math.round(d.capital_savings).toLocaleString()}</td>
-                `;
-                    tbody.appendChild(tr);
-                });
-
-            } catch (e) {
-                console.warn("Research data not ready yet. Run 'portfolio_study.py' first.");
-                document.getElementById('resWinRate').innerText = "N/A";
-            }
-        }
-
-        // --- Existing Functions (Live Monitor) ---
-        async function loadMarketOverview() {
-            try {
-                const res = await fetch('/tickers');
-                const data = await res.json();
-
-                const sel = document.getElementById('tickerInput');
-                const tbody = document.getElementById('summaryTableBody');
-
-                sel.innerHTML = '<option selected disabled>Select Asset</option>';
-                tbody.innerHTML = '';
-
-                data.forEach(item => {
-                    // Dropdown
-                    let opt = document.createElement('option');
-                    opt.value = item.code; opt.text = item.name; sel.appendChild(opt);
-
-                    // Table Row
-                    const tr = document.createElement('tr');
-                    tr.className = 'clickable-row';
-                    tr.onclick = () => selectAndRun(item.code);
-                    tr.innerHTML = `
-                    <td class="fw-bold">${item.name}</td>
-                    <td class="text-center">${item.garch_recent.toFixed(2)}%</td>
-                    <td class="text-center text-success fw-bold">${item.lstm_recent.toFixed(2)}%</td>
-                    <td class="text-center"><button class="btn btn-sm btn-outline-primary">View</button></td>
-                `;
-                    tbody.appendChild(tr);
-                });
-            } catch (e) { console.error(e); }
-        }
-
-        function selectAndRun(ticker) {
-            document.getElementById('tickerInput').value = ticker;
-            runAnalysis();
-        }
-
-        // --- Charting Logic ---
-        let chart = null;
-        async function runAnalysis() {
-            const ticker = document.getElementById('tickerInput').value;
-            const res = await fetch('/predict', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticker: ticker })
-            });
-            const data = await res.json();
-
-            document.getElementById('assetTitle').innerText = data.asset_name;
-            document.getElementById('resultsArea').style.display = 'block';
-
-            // Draw Chart
-            const ctx = document.getElementById('riskChart').getContext('2d');
-            if (chart) chart.destroy();
-
-            const losses = data.plot_data.pnl.map(p => p < 0 ? Math.abs(p) : 0);
-
-            chart = new Chart(ctx, {
-                data: {
-                    labels: data.plot_data.dates,
-                    datasets: [
-                        { type: 'bar', label: 'Loss', data: losses, backgroundColor: '#adb5bd', order: 3 },
-                        { type: 'line', label: 'GARCH', data: data.plot_data.garch_var, borderColor: '#dc3545', order: 2 },
-                        { type: 'line', label: 'LSTM', data: data.plot_data.lstm_var, borderColor: '#198754', order: 1 }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false }
-                }
-            });
-        }
-    </script>
+    <footer class="text-center py-4 text-secondary small">
+        &copy; 2025 Quant AI Lab. Powered by Google Cloud Platform.
+    </footer>
 
 </body>
 

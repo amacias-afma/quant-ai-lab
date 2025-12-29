@@ -1,0 +1,13 @@
+Using Project ID: quant-ai-lab
+Running FIXED query...
+C:\Users\fe_ma\miniconda3\envs\quant-ai-lab\Lib\site-packages\google\cloud\bigquery\table.py:1994: UserWarning: BigQuery Storage module not found, fetch data with the REST endpoint instead.
+  warnings.warn(
+Query success!
+    ticker     scenario  ...   capital_lstm  capital_savings
+0    ^GSPC  Covid_Crash  ...   23754.511949     24307.792267
+1  BTC-USD  Covid_Crash  ...  135984.942347    -41173.142112
+2    CLP=X  Covid_Crash  ...  250474.726212     69368.943737
+3      SQM  Covid_Crash  ...   66530.465044      3269.462077
+4     HG=F  Covid_Crash  ...   32234.601198     -1702.425066
+
+[5 rows x 8 columns]

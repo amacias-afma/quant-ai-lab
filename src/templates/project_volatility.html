@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Volatility: The Alpha Story</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Inter', sans-serif;
+            color: #212529;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            padding: 4rem 0;
+            margin-bottom: 3rem;
+        }
+
+        .hero-title {
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+
+        .hero-subtitle {
+            color: #94a3b8;
+            font-weight: 300;
+            font-size: 1.25rem;
+        }
+
+        /* Story Cards */
+        .story-card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 1.5rem;
+        }
+
+        .step-number {
+            background-color: #e2e8f0;
+            color: #475569;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .step-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #334155;
+        }
+
+        /* KPIs */
+        .kpi-box {
+            text-align: center;
+            padding: 1.5rem;
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .kpi-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        .kpi-label {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Highlights */
+        .text-gradient {
+            background: -webkit-linear-gradient(45deg, #3b82f6, #8b5cf6);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .bg-concept {
+            background-color: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 1.5rem;
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-5 shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/">Quant Risk Lab</a> <a href="/"
+                class="btn btn-outline-light btn-sm ms-auto">← Volver al Portafolio</a>
+        </div>
+    </nav>
+    <div class="hero-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h1 class="hero-title display-4">Deep Volatility Engine</h1>
+                    <p class="hero-subtitle mt-3">
+                        From "Normality Assumptions" to "Fat-Tail Physics."<br>
+                        A journey in optimizing Basel III Capital Efficiency using Deep Learning.
+                    </p>
+                </div>
+                <div class="col-lg-4 text-end d-none d-lg-block">
+                    <div class="p-4 bg-white bg-opacity-10 rounded-3 text-start backdrop-blur">
+                        <small class="text-uppercase text-white-50 fw-bold">Live System Status</small>
+                        <div class="d-flex align-items-center mt-2">
+                            <div class="spinner-grow text-success spinner-grow-sm me-2" role="status"></div>
+                            <span class="fw-bold">Model Online</span>
+                        </div>
+                        <div class="mt-2 text-white-50 small">
+                            Running 27 Stress Scenarios...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="story-card card">
+                    <div class="card-body p-5">
+                        <div class="row">
+                            <div class="col-md-5 border-end">
+                                <span class="step-number">1</span>
+                                <span class="step-title">The Challenge</span>
+                                <h3 class="fw-bold mt-3">Volatility is Invisible.</h3>
+                                <p class="text-muted">
+                                    Value at Risk (VaR) is the "Capital Shield" banks must hold to survive crashes.
+                                    If the shield is too thin, the bank fails. If it's too heavy, capital is wasted.
+                                </p>
+                                <p class="fw-bold text-danger">
+                                    The Problem: Traditional models (GARCH) assume returns are "Normal" (Gaussian).
+                                    Real markets have "Fat Tails" (Crashes happen 100x more often than predicted).
+                                </p>
+                            </div>
+                            <div class="col-md-7 ps-md-5">
+                                <span class="step-number">2</span>
+                                <span class="step-title">The "Aha!" Moment</span>
+                                <h3 class="fw-bold mt-3">The Student-t Fix</h3>
+                                <p class="text-muted">
+                                    Initially, our LSTM model failed with an <strong>11% Breach Rate</strong> (Target <
+                                        1%). Why? Because it learned the variance ($\sigma^2$) but not the kurtosis
+                                        (Tail Risk). </p>
+                                        <div class="bg-concept">
+                                            <strong>The Solution:</strong> We abandoned the Standard Normal ($Z=2.33$)
+                                            and implemented
+                                            <strong>Empirical Calibration</strong>. By mapping the LSTM residuals to a
+                                            Student-t distribution,
+                                            we derived a dynamic multiplier ($Z \approx 3.1$) that captures the "Fear"
+                                            in the market.
+                                        </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <h4 class="fw-bold text-dark mb-3">The Evidence: Results from 27 Crisis Simulations</h4>
+            </div>
+            <div class="col-md-4">
+                <div class="kpi-box">
+                    <div class="kpi-label">Risk Capture (Breach %)</div>
+                    <div class="kpi-value text-dark" id="kpiSafety">--%</div>
+                    <div class="text-muted small mt-2">Target: 1.0% (Lower is Safer)</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="kpi-box">
+                    <div class="kpi-label">Capital Efficiency</div>
+                    <div class="kpi-value text-primary" id="kpiSavings">--%</div>
+                    <div class="text-muted small mt-2">Capital Freed vs. GARCH</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="kpi-box">
+                    <div class="kpi-label">Model Reliability</div>
+                    <div class="kpi-value text-success" id="kpiWinRate">--%</div>
+                    <div class="text-muted small mt-2">% of Scenarios Outperformed</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="story-card card h-100">
+                    <div class="card-header">
+                        <h5 class="fw-bold m-0">📊 Proof of Stability</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="small text-muted mb-4">
+                            We ran <strong><span id="simCount">--</span> stress tests</strong> across 9 asset classes
+                            (Crypto, Equity, Commodities).
+                            <br>
+                            <strong>Green Zone:</strong> The LSTM points are tightly clustered around the 1% target,
+                            proving the Student-t calibration worked.
+                        </p>
+                        <div style="height: 350px;">
+                            <canvas id="distChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="story-card card h-100">
+                    <div class="card-header">
+                        <h5 class="fw-bold m-0">📝 Scenario Data</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th class="ps-3">Asset</th>
+                                        <th>Scenario</th>
+                                        <th class="text-end pe-3">Breach Rate</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="researchTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="story-card card mt-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <span class="step-number">3</span>
+                    <span class="fw-bold text-dark fs-5">Interactive Forensics</span>
+                </div>
+                <div class="d-flex gap-2">
+                    <select id="forensicTicker" class="form-select" style="width: 160px;"></select>
+                    <select id="forensicScenario" class="form-select" style="width: 220px;"></select>
+                    <button class="btn btn-primary fw-bold" onclick="loadForensics()">Run Analysis</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12">
+                        <p class="text-muted small">
+                            Visualize the "Capital Shield" in action.
+                            <br>
+                            <span class="text-danger fw-bold">Red Line (GARCH)</span>: Often slow to react.
+                            <span class="text-success fw-bold">Green Line (Deep LSTM)</span>: Spikes <i>instantly</i>
+                            when volatility clusters, protecting the bank.
+                        </p>
+                        <div style="height: 450px; width: 100%;">
+                            <canvas id="forensicChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Global State
+        let availableTickers = new Set();
+        let availableScenarios = new Set();
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            await loadResearchData();
+            // Auto-load first forensic chart if data exists
+            if (availableTickers.size > 0) loadForensics();
+        });
+
+        // 1. MAIN DATA LOADER
+        async function loadResearchData() {
+            try {
+                const res = await fetch('/research/data');
+                const data = await res.json();
+
+                if (!data || data.length === 0) return;
+
+                // --- CALCULATIONS ---
+                const simCount = data.length;
+
+                // Calculate Aggregates
+                const totalLstmBreach = data.reduce((sum, d) => sum + d.lstm_breach, 0);
+                const totalGarchCap = data.reduce((sum, d) => sum + d.capital_garch, 0);
+                const totalLstmCap = data.reduce((sum, d) => sum + d.capital_lstm, 0);
+
+                // Win = LSTM was safer OR (LSTM was safe enough AND cheaper)
+                const wins = data.filter(d =>
+                    Math.abs(d.lstm_breach - 1.0) < Math.abs(d.garch_breach - 1.0)
+                ).length;
+
+                const avgSafety = totalLstmBreach / simCount;
+                const efficiency = totalGarchCap > 0 ? ((totalGarchCap - totalLstmCap) / totalGarchCap) * 100 : 0;
+                const winRate = (wins / simCount) * 100;
+
+                // --- UI UPDATES ---
+                document.getElementById('simCount').innerText = simCount;
+                document.getElementById('kpiSafety').innerText = avgSafety.toFixed(2) + "%";
+
+                const effSign = efficiency > 0 ? "+" : "";
+                document.getElementById('kpiSavings').innerText = `${effSign}${efficiency.toFixed(1)}%`;
+                document.getElementById('kpiWinRate').innerText = winRate.toFixed(0) + "%";
+
+                // Populate Table & Dropdowns
+                const tbody = document.getElementById('researchTableBody');
+                tbody.innerHTML = '';
+
+                data.forEach(d => {
+                    availableTickers.add(d.ticker);
+                    availableScenarios.add(d.scenario);
+
+                    tbody.innerHTML += `
+                    <tr>
+                        <td class="ps-3 fw-bold">${d.ticker}</td>
+                        <td class="text-muted small">${d.scenario.replace(/_/g, ' ')}</td>
+                        <td class="text-end pe-3">
+                            <span class="badge ${d.lstm_breach > 2.5 ? 'bg-danger' : 'bg-success'}">
+                                ${d.lstm_breach.toFixed(2)}%
+                            </span>
+                        </td>
+                    </tr>`;
+                });
+
+                // Fill Selectors
+                const tickSel = document.getElementById('forensicTicker');
+                const scenSel = document.getElementById('forensicScenario');
+                availableTickers.forEach(t => tickSel.add(new Option(t, t)));
+                availableScenarios.forEach(s => scenSel.add(new Option(s, s)));
+
+                // Draw Stability Chart
+                renderDistChart(data);
+
+            } catch (e) {
+                console.error("Data Load Error:", e);
+            }
+        }
+
+        // 2. STABILITY CHART (Scatter)
+        function renderDistChart(data) {
+            const ctx = document.getElementById('distChart').getContext('2d');
+
+            const datasets = [
+                { label: 'Historical', data: [], backgroundColor: '#94a3b8', pointRadius: 4 },
+                { label: 'GARCH (Traditional)', data: [], backgroundColor: '#ef4444', pointRadius: 5 },
+                { label: 'Deep LSTM (Calibrated)', data: [], backgroundColor: '#22c55e', pointRadius: 6 }
+            ];
+
+            data.forEach(d => {
+                // Jitter for visual separation
+                const jitter = () => (Math.random() - 0.5) * 0.25;
+                datasets[0].data.push({ x: 1 + jitter(), y: d.hist_breach });
+                datasets[1].data.push({ x: 2 + jitter(), y: d.garch_breach });
+                datasets[2].data.push({ x: 3 + jitter(), y: d.lstm_breach });
+            });
+
+            new Chart(ctx, {
+                type: 'scatter',
+                data: { datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear', min: 0.5, max: 3.5,
+                            ticks: { callback: v => v === 1 ? 'Historical' : v === 2 ? 'GARCH' : v === 3 ? 'LSTM' : '' },
+                            grid: { display: false }
+                        },
+                        y: {
+                            title: { display: true, text: 'Breach Rate (%)' },
+                            suggestedMin: 0, suggestedMax: 6
+                        }
+                    },
+                    plugins: {
+                        annotation: {
+                            annotations: {
+                                targetLine: {
+                                    type: 'line',
+                                    yMin: 1.0, yMax: 1.0,
+                                    borderColor: '#16a34a', borderWidth: 2, borderDash: [6, 4],
+                                    label: { content: 'Target (1.0%)', enabled: true, position: 'end', backgroundColor: '#16a34a' }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 3. FORENSICS CHART (Time Series)
+        let forensicChartRef = null;
+
+        async function loadForensics() {
+            const ticker = document.getElementById('forensicTicker').value;
+            const scenario = document.getElementById('forensicScenario').value;
+            if (!ticker || !scenario) return;
+
+            try {
+                const res = await fetch(`/research/timeseries?ticker=${ticker}&scenario=${scenario}`);
+                const ts = await res.json();
+
+                // Safety Check
+                if (!ts || !ts.loss) {
+                    console.warn("No time-series data found.");
+                    return;
+                }
+
+                const ctx = document.getElementById('forensicChart').getContext('2d');
+                if (forensicChartRef) forensicChartRef.destroy();
+
+                // Filter out zero losses for cleaner bars
+                const cleanLoss = ts.loss.map(v => v > 0 ? v : null);
+
+                forensicChartRef = new Chart(ctx, {
+                    data: {
+                        labels: ts.dates,
+                        datasets: [
+                            {
+                                type: 'bar', label: 'Market Loss',
+                                data: cleanLoss,
+                                backgroundColor: 'rgba(148, 163, 184, 0.3)',
+                                barThickness: 2, order: 3
+                            },
+                            {
+                                type: 'line', label: 'GARCH Shield',
+                                data: ts.var_garch,
+                                borderColor: '#ef4444', borderWidth: 2, pointRadius: 0,
+                                tension: 0.1, order: 2
+                            },
+                            {
+                                type: 'line', label: 'LSTM Shield (AI)',
+                                data: ts.var_lstm,
+                                borderColor: '#22c55e', borderWidth: 2, pointRadius: 0,
+                                tension: 0.1, order: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            y: { beginAtZero: true, title: { display: true, text: 'Portfolio Value ($)' } },
+                            x: { ticks: { maxTicksLimit: 10 } }
+                        }
+                    }
+                });
+
+            } catch (e) { console.error("Forensics Error:", e); }
+        }
+    </script>
+
+</body>
+
+</html>

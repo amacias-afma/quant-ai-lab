@@ -20,4 +20,4 @@ COPY . .
 # 5. Define the command to run the app using Gunicorn (Production Server)
 # This assumes your main flask app is in 'src/app.py' and the variable is 'server' or 'app'
 # We will create a dummy app next to make this pass.
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 src.app:app
+CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 src.wsgi:app

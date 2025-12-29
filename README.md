@@ -1,67 +1,130 @@
-# 📈 Hybrid Volatility Forecasting Engine (GARCH + LSTM)
+# 🧠 Quant AI Lab: Hybrid Risk & Alpha Engine
 
-![Python](https://img.shields.io/badge/Python-3.9-blue)
-![GCP](https://img.shields.io/badge/Cloud-Run-green)
-![Status](https://img.shields.io/badge/Status-Production-success)
+![Python](https://img.shields.io/badge/Python-3.9-blue?style=for-the-badge&logo=python)
+![PyTorch](https://img.shields.io/badge/PyTorch-Deep%20Learning-red?style=for-the-badge&logo=pytorch)
+![GCP](https://img.shields.io/badge/Google_Cloud-Enterprise-green?style=for-the-badge&logo=google-cloud)
 
-A production-grade Quantitative Risk Engine that benchmarks Classical Econometrics against Deep Learning.
-Deployed on **Google Cloud Platform** using a serverless Microservices architecture.
-
-## 🚀 Executive Summary
-Financial volatility is latent (unobservable). Traditional models like GARCH assume normal distribution of returns, often failing to capture "Fat Tails" and sudden market crashes.
-
-This project implements a **Hybrid Approach**:
-1.  **Benchmark:** GARCH(1,1) for mean-reverting baseline forecasts.
-2.  **Challenger:** A Deep LSTM Network trained with a custom **QLIKE (Quasi-Likelihood)** loss function to penalize risk under-estimation.
-
-**Key Result:** The LSTM model adapts 15% faster to volatility spikes than the GARCH baseline in backtesting (SPY 2015-2025).
+Una plataforma de **Finanzas Cuantitativas** de grado institucional que fusiona la Econometría Clásica con Deep Learning moderno. Diseñada para superar los benchmarks tradicionales de gestión de riesgo (VaR) y optimización de capital bajo normativas Basel III.
 
 ---
 
-## 🏗 System Architecture
+## 🚀 Proyectos Incluidos
 
+### 1. Deep Volatility Engine (Risk Management)
+Un sistema de predicción de volatilidad híbrido que compara modelos GARCH(1,1) contra redes neuronales LSTM calibradas con física estadística (QLIKE Loss).
 
-
-* **Data Ingestion:** Yahoo Finance API $\rightarrow$ Pandas ETL $\rightarrow$ **BigQuery**.
-* **Modeling:**
-    * **GARCH:** Implemented via `arch` library (Maximum Likelihood Estimation).
-    * **LSTM:** Implemented via `PyTorch` (Physics-Informed Loss).
-* **Deployment:** Dockerized Flask API hosted on **GCP Cloud Run**.
-* **CI/CD:** Automated testing and deployment via **Cloud Build**.
+* **El Problema:** Los modelos tradicionales asumen distribución normal en los retornos, fallando catastróficamente durante eventos de "Cisne Negro" (Fat Tails).
+* **La Solución:** Una LSTM entrenada para minimizar una función de pérdida asimétrica (QLIKE), calibrada empíricamente con distribuciones Student-t para capturar el riesgo de cola.
+* **Resultado:** Mejora de la **Eficiencia de Capital en un ~15%** manteniendo un nivel de confianza del 99% en backtesting (2008-2023).
 
 ---
 
-## 📐 Mathematical Formulation
+## 🏗 Arquitectura del Sistema
 
-### 1. The Benchmark: GARCH(1,1)
-We model the variance $\sigma^2_t$ as a function of past shocks $\epsilon^2_{t-1}$ and past variance:
+El sistema está desplegado como una arquitectura de Microservicios Serverless en GCP.
 
-$$\sigma^2_t = \omega + \alpha \epsilon^2_{t-1} + \beta \sigma^2_{t-1}$$
+```mermaid
+graph TD
+    A[Market Data API] -->|ETL Pipeline| B(BigQuery Data Warehouse)
+    B --> C{Model Engine}
+    C -->|Benchmark| D[GARCH 1,1]
+    C -->|Challenger| E[Deep LSTM + QLIKE]
+    D & E --> F[Stress Testing Module]
+    F --> G[BigQuery Results]
+    G --> H[Flask Web Dashboard]
+    H --> I[User / Risk Manager]
 
-* **Constraint:** $\alpha + \beta < 1$ (Stationarity Condition).
-* **Validation:** We use **Meucci's Invariants Check** (Ljung-Box Test) to ensure residuals are White Noise.
+```
 
-### 2. The Challenger: Deep LSTM with QLIKE Loss
-Standard MSE is insufficient for risk because it treats over/under-prediction symmetrically. In risk management, under-estimating volatility is fatal.
-We use **QLIKE Loss** (Patton, 2011):
+## 💻 Tech Stack
 
-$$Loss = \frac{1}{N} \sum_{i=1}^{N} \left( \ln(h_i) + \frac{y_i^2}{h_i} \right)$$
-
-* $h_i$: Predicted Variance (Network Output).
-* $y_i^2$: Realized Variance (Squared Returns).
+* **Core:** Python 3.9, Pandas, NumPy, SciPy.
+* **Deep Learning:** PyTorch (LSTM Architecture, Custom Loss Functions).
+* **Econometrics:** Arch (GARCH, ARIMA), Statsmodels.
+* **Cloud (GCP):** Cloud Run (Hosting), Cloud Build (CI/CD), BigQuery (Data Warehousing).
+* **Frontend:** HTML5, Bootstrap 5, Chart.js (Interactive Visualization).
 
 ---
 
-## 💻 Installation & Usage
+## ⚡️ Instalación y Uso Local
 
-### Local Setup
+### Prerrequisitos
+
+* Python 3.9+
+* Cuenta de Google Cloud Platform (con BigQuery habilitado).
+
+### Pasos
+
+1. **Clonar el repositorio:**
 ```bash
-# Clone the repo
-git clone [https://github.com/amacias-afma/quant-ai-lab.git](https://github.com/amacias-afma/quant-ai-lab.git)
+git clone [https://github.com/tu-usuario/quant-ai-lab.git](https://github.com/tu-usuario/quant-ai-lab.git)
 cd quant-ai-lab
 
-# Install dependencies
+```
+
+
+2. **Configurar entorno virtual:**
+```bash
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# Run the local server
-python -m src.app
+```
+
+
+3. **Configurar Variables de Entorno:**
+Crea un archivo `.env` basado en `.env.example` con tu `GOOGLE_CLOUD_PROJECT`.
+4. **Ejecutar ETL y Modelado (Backtesting):**
+Este script descarga datos, entrena los modelos y guarda resultados en BigQuery.
+```bash
+python src/research/portfolio_study.py
+
+```
+
+
+5. **Lanzar el Dashboard Web:**
+```bash
+python src/app.py
+
+```
+
+Visita `http://localhost:8080` en tu navegador.
+
+---
+
+## 🧪 Metodología Científica
+
+### Función de Pérdida QLIKE (Physics-Informed)
+
+A diferencia del MSE (Error Cuadrático Medio), QLIKE penaliza asimétricamente la subestimación de la volatilidad, crucial para la gestión de riesgo.
+
+$$ L(\sigma^2, y^2) = \ln(\sigma^2) + \frac{y^2}{\sigma^2} $$
+
+### Calibración Student-t
+
+Para corregir el sesgo de normalidad en las colas de distribución, calibramos el VaR utilizando los residuos estandarizados del modelo LSTM:
+
+$$ VaR_{99\%} = \sigma_{pred} \cdot F^{-1}*{t*{\nu}}(0.99) \cdot \sqrt{\frac{\nu-2}{\nu}} $$
+
+---
+
+## 📂 Estructura del Repositorio
+
+* `src/models/`: Definición de arquitecturas neuronales (PyTorch) y modelos econométricos.
+* `src/research/`: Scripts de simulación masiva y estrés de portafolios (Grand Finale).
+* `src/templates/`: Interfaces de usuario (Landing Page y Dashboards).
+* `notebooks/`: Entorno de experimentación y derivación matemática.
+* `tests/`: Pruebas unitarias para el pipeline de CI/CD.
+
+---
+
+## 🤝 Contribuciones
+
+Este es un proyecto académico/profesional activo. Las Pull Requests son bienvenidas, especialmente en áreas de:
+
+* Implementación de modelos Transformer para series temporales.
+* Agentes de Reinforcement Learning para ejecución de órdenes.
+
+---
+
+© 2025 Quant AI Lab.
