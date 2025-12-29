@@ -104,7 +104,7 @@ $$ L(\sigma^2, y^2) = \ln(\sigma^2) + \frac{y^2}{\sigma^2} $$
 
 Para corregir el sesgo de normalidad en las colas de distribución, calibramos el VaR utilizando los residuos estandarizados del modelo LSTM:
 
-$$ VaR_{99\%} = \sigma_{pred} \cdot F^{-1}*{t*{\nu}}(0.99) \cdot \sqrt{\frac{\nu-2}{\nu}} $$
+$$ VaR_{99%} = \sigma_{pred} \cdot F^{-1}*{t*{\nu}}(0.99) \cdot \sqrt{\frac{\nu-2}{\nu}} $$
 
 ---
 
