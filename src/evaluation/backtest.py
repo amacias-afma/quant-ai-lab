@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from arch import arch_model
-from src.models.lstm import lstm_fit, create_sequences_log
+from src.models.volatility.lstm import lstm_fit, create_sequences_log
+from src.models.volatility.arima_garch import arima_garch_forecast
 
 import torch
 # from arch import arch_model
@@ -39,11 +40,16 @@ def backtest(portfolio_value, confidence_level, df_clean, start_date, end_date, 
     res_fixed = am_full.fix(res.params)
     garch_vol_test = res_fixed.conditional_volatility.loc[start_date:end_date]
     
+    # --- 1b. ARIMA-GARCH (Combined) ---
+    # Projects VaR directly using Arima Mean + Garch Vol
+    print("    Training ARIMA-GARCH...")
+    var_arima_garch_raw = arima_garch_forecast(train_data, test_data, confidence_level=confidence_level)
+    
     # --- 2. Historical Volatility ---
     hist_vol_test = full_data.rolling(22).std().loc[start_date:end_date]
 
     # --- 3. LSTM Volatility ---
-    seq_len = 66
+    seq_len = 66 * 2
     
     # 3a. Train the model (We ignore the in-sample return value here)
     lstm_vol_test, calibrated_z = lstm_fit(train_data, seq_len, test_data)
@@ -58,6 +64,9 @@ def backtest(portfolio_value, confidence_level, df_clean, start_date, end_date, 
     garch_vol_unscaled = garch_vol_test / 100
     hist_vol_unscaled = hist_vol_test / 100
     lstm_vol_unscaled = lstm_vol_test / 100 / np.sqrt(252) # Already annualized in step 3d
+    
+    # Un-scale ARIMA-GARCH VaR (Input was x100)
+    var_arima_garch_unscaled = var_arima_garch_raw / 100
 
     # lstm_vol_unscaled = lstm_vol_test / np.sqrt(252) # Already annualized in step 3d
 
@@ -70,6 +79,9 @@ def backtest(portfolio_value, confidence_level, df_clean, start_date, end_date, 
     var_hist = hist_vol_unscaled * portfolio_value * confidence_level
     var_lstm = lstm_vol_unscaled * portfolio_value * calibrated_z
     
+    # Combined Model Shield
+    var_combined = var_arima_garch_unscaled * portfolio_value 
+    
     # Check Breaches (Loss > Capital)
     # We generally only count breaches where there was an actual loss (>0)
     loss_mask = daily_loss > 0
@@ -77,14 +89,17 @@ def backtest(portfolio_value, confidence_level, df_clean, start_date, end_date, 
     breach_garch = (daily_loss > var_garch) & loss_mask
     breach_hist = (daily_loss > var_hist) & loss_mask
     breach_lstm = (daily_loss > var_lstm) & loss_mask
+    breach_combined = (daily_loss > var_combined) & loss_mask
     
     print(f"LSTM Breaches: {breach_lstm.sum()} / {len(breach_lstm)}")
     
     rate_garch = breach_garch.mean() * 100
     rate_hist = breach_hist.mean() * 100
     rate_lstm = breach_lstm.mean() * 100
+    rate_combined = breach_combined.mean() * 100
     
     print(f"    GARCH Breach Rate:      {rate_garch:.2f}%  (Target: 1.0%)")
+    print(f"    ARIMA-GARCH Rate:       {rate_combined:.2f}%")
     print(f"    Historical Breach Rate: {rate_hist:.2f}%")
     print(f"    LSTM Breach Rate:       {rate_lstm:.2f}%")
     
@@ -94,13 +109,16 @@ def backtest(portfolio_value, confidence_level, df_clean, start_date, end_date, 
     if visual:
         plt.figure(figsize=(10, 4))
         plt.bar(test_data.index, daily_loss, color='gray', alpha=0.3, label='Daily PnL (Loss)')
-        plt.plot(var_garch.index, var_garch, color='red', label='GARCH Shield')
+        plt.plot(var_garch.index, var_garch, color='red', alpha=0.6, label='GARCH Shield')
+        plt.plot(var_combined.index, var_combined, color='purple', linewidth=2, label='ARIMA-GARCH Shield')
         plt.plot(var_hist.index, var_hist, color='blue', linestyle='--', label='HistVol Shield')
         plt.plot(var_lstm.index, var_lstm, color='green', linestyle='--', label='LSTM Shield')
     
         # Highlight Breaches
         plt.scatter(var_garch.index[breach_garch], daily_loss[breach_garch], 
                     color='red', marker='x', s=50, zorder=5)
+        plt.scatter(var_combined.index[breach_combined], daily_loss[breach_combined], 
+                    color='purple', marker='x', s=50, zorder=5)
         plt.scatter(var_hist.index[breach_hist], daily_loss[breach_hist], 
                     color='blue', marker='x', s=50, zorder=5)
         plt.scatter(var_lstm.index[breach_lstm], daily_loss[breach_lstm], 

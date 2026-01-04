@@ -4,23 +4,68 @@ import json
 from flask import Flask, jsonify, request, render_template
 from google.cloud import bigquery
 
+
+from data.text import NewsIngestor
+from models.alpha_rag.benchmark import VaderBenchmark
+from models.alpha_rag.rag_engine import FinancialRAG
+
+rag_system = FinancialRAG()
+
 app = Flask(__name__, template_folder='templates')
 PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT", "quant-ai-lab")
 client = bigquery.Client(project=PROJECT_ID)
 
-# --- RUTAS DE NAVEGACIÓN ---
+# --- NAVIGATION ROUTES ---
 
 @app.route('/')
 def home():
-    """Página de inicio (Portafolio de Proyectos)."""
+    """Home Page (Project Portfolio)."""
     return render_template('index.html')
 
 @app.route('/projects/volatility')
 def project_volatility():
-    """El Dashboard del Risk Engine (lo que antes era el index)."""
+    """Risk Engine Dashboard (formerly the index)."""
     return render_template('project_volatility.html')
 
-# --- APIS DEL PROYECTO VOLATILIDAD (Sin cambios) ---
+@app.route('/alpha/results', methods=['GET'])
+def get_alpha_results():
+    """Endpoint de lectura rápida para el Dashboard de Alpha."""
+    ticker = request.args.get('ticker') # Opcional: filtrar por ticker
+    
+    base_query = f"""
+        SELECT 
+            ticker, total_return, alpha, sharpe, drawdown, chart_json 
+        FROM `{PROJECT_ID}.market_data.alpha_results`
+    """
+    
+    if ticker:
+        base_query += f" WHERE ticker = '{ticker}'"
+    
+    try:
+        df = client.query(base_query).to_dataframe()
+        
+        if df.empty:
+            return jsonify({"status": "empty", "message": "Run study_alpha.py first"})
+            
+        # Convertir a lista de dicts (y parsear el JSON interno de la gráfica)
+        results = []
+        for _, row in df.iterrows():
+            item = row.to_dict()
+            item['chart_data'] = json.loads(row['chart_json']) # Deserializar
+            del item['chart_json'] # Limpiar para no enviar doble data
+            results.append(item)
+            
+        return jsonify({"status": "success", "data": results})
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+        
+@app.route('/projects/alpha-rag')
+def project_alpha():
+    """Project 2: Alpha Signals (NLP)."""
+    return render_template('project_alpha.html')
+
+# --- VOLATILITY PROJECT APIS (No Info Changes) ---
 
 @app.route('/research/data', methods=['GET'])
 def get_research_data():
@@ -97,6 +142,49 @@ def get_forecast():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/alpha/analyze', methods=['POST'])
+def analyze_sentiment():
+    """
+    1. Download recent news.
+    2. Execute Benchmark (VADER).
+    3. Execute RAG (Embeddings + LLM).
+    4. Return comparison.
+    """
+    data = request.json
+    ticker = data.get('ticker', 'SPY')
+    
+    try:
+        # A. Ingestion
+        ingestor = NewsIngestor(ticker)
+        df_news = ingestor.fetch_recent_news()
+        
+        if df_news.empty:
+            return jsonify({"status": "error", "message": "No news found for this ticker."})
 
+        # B. Benchmark (VADER)
+        vader = VaderBenchmark()
+        df_scored = vader.analyze_dataframe(df_news)
+        vader_score = df_scored['sentiment_score'].mean()
+        
+        # C. RAG (Advanced)
+        # Load news into RAG memory
+        rag_system.ingest_data(df_news)
+        # Request qualitative insight
+        rag_insight = rag_system.get_trading_signal(ticker)
+        
+        # D. Response
+        return jsonify({
+            "status": "success",
+            "ticker": ticker,
+            "news_count": len(df_news),
+            "benchmark_score": vader_score, # Number between -1 and 1
+            "rag_insight": rag_insight,     # Explanatory text from LLM
+            "top_news": df_scored.nlargest(3, 'sentiment_score')[['title', 'link', 'sentiment_score']].to_dict(orient='records')
+        })
+        
+    except Exception as e:
+        print(f"Error in analysis: {e}")
+        return jsonify({"error": str(e)}), 500
+        
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))

@@ -11,7 +11,7 @@ def clean_data(df, z_score_threshold=4):
     # 1. Handle Missing Data
     if df_clean.isnull().sum().sum() > 0:
         print(f"Found {df_clean.isnull().sum().sum()} NaNs. Forward filling...")
-        df_clean.fillna(method='ffill', inplace=True)
+        df_clean.ffill(inplace=True)
     
     # 2. Outlier Detection (Simple Z-Score on diffs)
     # We look for unrealistic jumps in price

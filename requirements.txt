@@ -18,6 +18,7 @@ pandas-gbq
 # Cloud & Infra
 google-cloud-bigquery
 google-cloud-storage
+google-cloud-aiplatform>=1.38.0
 
 # Development & Testing
 pytest
