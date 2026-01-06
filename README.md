@@ -104,11 +104,7 @@ $$ L(\sigma^2, y^2) = \ln(\sigma^2) + \frac{y^2}{\sigma^2} $$
 
 To correct normality bias in distribution tails, we calibrate VaR using standardized residuals from the LSTM model:
 
-<<<<<<< HEAD
 $$ VaR_{99\%} = \sigma_{pred} \cdot F^{-1}_{t_{\nu}}(0.99) \cdot \sqrt{\frac{\nu-2}{\nu}} $$
-=======
-$$ VaR_{0.99} = \sigma_{pred} \cdot F^{-1}*{t*{\nu}}(0.99) \cdot \sqrt{\frac{\nu-2}{\nu}} $$
->>>>>>> 69f5ca42b580127da544c0f53ab5d830915c2251
 
 ---
 
@@ -265,4 +261,4 @@ Where:
 4.  **Loughran, T., & McDonald, B. (2011).** *When Is a Liability Not a Liability? Textual Analysis, Dictionaries, and 10-Ks*. The Journal of Finance.
     * *Why:* The standard reference for why general dictionaries fail in financial contexts.
 ---
-© 2025 Quant AI Lab.
+© 2026 AFMA: Quant AI Lab.
