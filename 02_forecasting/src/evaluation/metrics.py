@@ -95,27 +95,136 @@ def evaluate_forecasts(actual_returns: Union[pd.Series, np.ndarray],
     idx = actual_returns.index if isinstance(actual_returns, pd.Series) else range(T)
     return pd.DataFrame(results, index=idx)
 
-def test_pit_uniformity(pit_series: Union[pd.Series, np.ndarray], alpha: float = 0.05) -> Tuple[float, float, bool]:
+def test_pit_uniformity(pit_series: Union[pd.Series, np.ndarray], alpha: float = 0.05) -> Tuple[float, float, str]:
     """
     Performs the Kolmogorov-Smirnov test to check if PIT values are U(0,1).
-    
+
+    Args:
+        pit_series: Series or array of PIT values in [0, 1].
+        alpha:      Significance level. Default 0.05.
+
     Returns:
-        Tuple containing (KS_Statistic, P_Value, Is_Calibrated_Boolean)
+        Tuple of (ks_statistic, p_value, result_string) where result_string
+        is 'Reject' or 'Not Reject'.
     """
-    clean_pit = pit_series.dropna() if isinstance(pit_series, pd.Series) else pit_series[~np.isnan(pit_series)]
-    
+    clean_pit = pit_series.dropna().values if isinstance(pit_series, pd.Series) else pit_series[~np.isnan(pit_series)]
+
     ks_stat, p_value = kstest(clean_pit, 'uniform')
-    is_calibrated = p_value >= alpha
-    
+
     print("\n--- STATISTICAL CALIBRATION TEST (Kolmogorov-Smirnov) ---")
     print(f"K-S Statistic: {ks_stat:.5f}")
     print(f"P-Value:       {p_value:.5e} (Threshold: {alpha})")
-    
-    if is_calibrated:
-        print("Result:        ✅ PASS (Fail to Reject Null)")
-        print("Diagnosis:     The model is Statistically Calibrated.")
+
+    if p_value < alpha:
+        print("Result:        ❌ REJECT the Null Hypothesis")
+        print("Diagnosis:     The PIT is NOT uniform. The model's predicted distribution")
+        print("               does not match the realized market data.")
+        result = 'Reject'
     else:
-        print("Result:        ❌ REJECT Null")
-        print("Diagnosis:     The model is Miscalibrated (PIT is not Uniform).")
-        
-    return ks_stat, p_value, is_calibrated
+        print("Result:        ✅ FAIL TO REJECT the Null Hypothesis")
+        print("Diagnosis:     The PIT is statistically uniform. The model is")
+        print("               well-calibrated to the market distribution.")
+        result = 'Not Reject'
+
+    return ks_stat, p_value, result
+
+
+def print_evaluation_summary(df_ret: pd.DataFrame, ticker_name: str) -> None:
+    """
+    Prints the summary of the quantitative forecasting metrics.
+    """
+    print(f"\n--- {ticker_name} EVALUATION SUMMARY ---")
+    print(f"Average CRPS:           {df_ret['CRPS'].mean():.5f} (Lower is better)")
+    print(f"Total Log-Likelihood:   {df_ret['Log_Likelihood'].sum():.2f}")
+    print(f"Average Log-Likelihood: {df_ret['Log_Likelihood'].mean():.5f}")
+
+
+# ---------------------------------------------------------------------------
+# Financial Summary of a Forecast Distribution
+# ---------------------------------------------------------------------------
+
+def summarize_forecast_distribution(
+    samples: np.ndarray,
+    rf_daily: float = 0.0,
+    periods_per_year: int = 252,
+    confidence_levels: tuple = (0.95, 0.99),
+) -> pd.DataFrame:
+    """
+    Computes financial risk and performance statistics from a distribution of
+    forecasted returns (an ensemble / Monte-Carlo sample array).
+
+    Input
+    -----
+    samples : np.ndarray, shape (N,)
+        Simulated/forecasted daily return samples for a single time step t+1.
+    rf_daily : float
+        Daily risk-free rate (default 0 — use e.g. 0.05/252 for 5 % p.a.).
+    periods_per_year : int
+        Trading periods in a year used for annualisation (default 252).
+    confidence_levels : tuple of float
+        Confidence levels for VaR / CVaR (default (0.95, 0.99)).
+
+    Returns
+    -------
+    pd.DataFrame
+        Single-column DataFrame indexed by metric name, easy to display()
+        or join with other model summaries.
+    """
+    s = np.asarray(samples, dtype=float)
+    s = s[~np.isnan(s)]          # drop NaNs defensively
+    ann = np.sqrt(periods_per_year)
+
+    rows = {}
+
+    # ── Central Tendency ────────────────────────────────────────────────────
+    rows["Expected Return (daily)"] = np.mean(s)
+    rows["Median Return  (daily)"] = np.median(s)
+    rows["Expected Return (ann.)"]  = np.mean(s) * periods_per_year
+
+    # ── Spread ──────────────────────────────────────────────────────────────
+    rows["Volatility (daily)"] = np.std(s, ddof=1)
+    rows["Volatility (ann.)"]  = np.std(s, ddof=1) * ann
+
+    # ── Shape ───────────────────────────────────────────────────────────────
+    rows["Skewness"] = float(pd.Series(s).skew())
+    rows["Kurtosis (excess)"] = float(pd.Series(s).kurt())
+
+    # ── Risk / VaR & CVaR ───────────────────────────────────────────────────
+    for cl in confidence_levels:
+        pct_label = f"{int(cl * 100)}%"
+        var  = np.percentile(s, (1 - cl) * 100)
+        cvar = s[s <= var].mean() if np.any(s <= var) else var
+        rows[f"VaR  {pct_label} (daily)"] = var
+        rows[f"CVaR {pct_label} (daily)"] = cvar
+        rows[f"VaR  {pct_label} (ann.)"]  = var  * ann
+        rows[f"CVaR {pct_label} (ann.)"]  = cvar * ann
+
+    # ── Performance Ratios ──────────────────────────────────────────────────
+    excess   = s - rf_daily
+    std_down = np.std(s[s < rf_daily], ddof=1) if np.any(s < rf_daily) else np.nan
+
+    sharpe  = (np.mean(excess) / np.std(s, ddof=1)) * ann if np.std(s) > 0 else np.nan
+    sortino = (np.mean(excess) / std_down) * ann           if std_down and std_down > 0 else np.nan
+
+    # Omega Ratio: P(gain) weighted mean gain / P(loss) weighted mean loss
+    gains  = s[s > rf_daily] - rf_daily
+    losses = rf_daily - s[s <= rf_daily]
+    omega  = (gains.mean() * len(gains)) / (losses.mean() * len(losses)) if len(losses) > 0 and losses.mean() > 0 else np.nan
+
+    # Tail Ratio: 95th pct gain / abs(5th pct loss)
+    tail_ratio = abs(np.percentile(s, 95)) / abs(np.percentile(s, 5)) if np.percentile(s, 5) != 0 else np.nan
+
+    rows["Sharpe Ratio  (ann.)"]  = sharpe
+    rows["Sortino Ratio (ann.)"]  = sortino
+    rows["Omega Ratio"]           = omega
+    rows["Tail Ratio  (p95/p5)"]  = tail_ratio
+
+    # ── Probability Signals ─────────────────────────────────────────────────
+    rows["P(Return > 0)"]  = np.mean(s > 0)
+    rows["P(Return > rf)"] = np.mean(s > rf_daily)
+
+    df = (
+        pd.DataFrame.from_dict(rows, orient="index", columns=["Value"])
+        .round(6)
+    )
+    return df

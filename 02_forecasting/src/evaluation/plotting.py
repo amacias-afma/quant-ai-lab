@@ -7,10 +7,93 @@ model evaluation (PIT histograms, CRPS rolling plots), and risk metrics.
 
 import numpy as np
 import pandas as pd
+from pandas.io.formats.style import Styler
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
+def compute_descriptive_stats(prices: pd.Series, returns: pd.Series) -> Styler:
+    """
+    Computes and returns a styled descriptive statistics table for price and returns.
+
+    Args:
+        prices:  pd.Series of asset Close prices with a DatetimeIndex.
+        returns: pd.Series of asset daily returns with a DatetimeIndex.
+
+    Returns:
+        pandas Styler object — call display() on it in a Jupyter cell.
+    """
+    ann_vol = returns.std() * np.sqrt(252)
+    sharpe  = (returns.mean() / returns.std()) * np.sqrt(252)
+    max_dd  = (prices / prices.cummax() - 1).min()
+
+    stats = pd.DataFrame({
+        "Close Price (USD)": {
+            "Start":       prices.iloc[0],
+            "End":         prices.iloc[-1],
+            "Min":         prices.min(),
+            "Max":         prices.max(),
+            "Mean":        prices.mean(),
+            "Std Dev":     prices.std(),
+            "Skewness":    np.nan,
+            "Kurtosis":    np.nan,
+            "Ann. Vol":    np.nan,
+            "Sharpe (252)": np.nan,
+            "Max Drawdown": np.nan,
+        },
+        "Daily Returns": {
+            "Start":       returns.iloc[0],
+            "End":         returns.iloc[-1],
+            "Min":         returns.min(),
+            "Max":         returns.max(),
+            "Mean":        returns.mean(),
+            "Std Dev":     returns.std(),
+            "Skewness":    returns.skew(),
+            "Kurtosis":    returns.kurt(),
+            "Ann. Vol":    ann_vol,
+            "Sharpe (252)": sharpe,
+            "Max Drawdown": max_dd,
+        },
+    }).round(4)
+
+    def _highlight_extremes(col):
+        """Color positive good / negative bad cells for the Returns column."""
+        if col.name != "Daily Returns":
+            return [""] * len(col)
+        styles = []
+        for idx, val in col.items():
+            if pd.isna(val):
+                styles.append("")
+            elif idx in ("Max", "Mean", "Sharpe (252)", "Ann. Vol") and val > 0:
+                styles.append("background-color: #d4edda; color: #155724;")  # green
+            elif idx in ("Min", "Max Drawdown", "Kurtosis") and val < 0:
+                styles.append("background-color: #f8d7da; color: #721c24;")  # red
+            else:
+                styles.append("")
+        return styles
+
+    styled = (
+        stats.style
+        .apply(_highlight_extremes, axis=0)
+        .format(na_rep="—", precision=4)
+        .set_caption("📊 Descriptive Statistics")
+        .set_table_styles([
+            {"selector": "caption",
+             "props": [("font-size", "14px"), ("font-weight", "bold"),
+                       ("text-align", "left"), ("padding-bottom", "6px")]},
+            {"selector": "th",
+             "props": [("background-color", "#2c3e50"), ("color", "white"),
+                       ("font-weight", "bold"), ("padding", "6px 12px")]},
+            {"selector": "td",
+             "props": [("padding", "5px 12px"), ("border-bottom", "1px solid #dee2e6")]},
+            {"selector": "tr:hover td",
+             "props": [("background-color", "#f0f4f8")]},
+        ])
+    )
+    return styled
+
+
 def plot_price_analysis(prices: pd.Series, returns: pd.Series, ticker_name: str) -> None:
+
     """
     Generates a 2x2 dashboard of stylized financial facts for a given asset.
     Includes Price History, Daily Returns, Return Distribution, and Rolling Volatility.
@@ -62,3 +145,28 @@ def plot_price_analysis(prices: pd.Series, returns: pd.Series, ticker_name: str)
     plt.show()
 
 
+def plot_forecast_evaluation(df_ret, ticker_name='PERFECT WORLD'):
+    """
+    Plots the PIT Histogram and Rolling CRPS to visually evaluate forecast calibration.
+    """
+    plt.style.use('bmh')
+    fig, axes = plt.subplots(1, 2, figsize=(15, 5))
+
+    # Plot 1: The PIT Histogram (Should be Flat!)
+    axes[0].hist(df_ret['PIT'], bins=20, edgecolor='black', alpha=0.7, color='mediumseagreen', density=True)
+    axes[0].axhline(1, color='red', linestyle='--', linewidth=2, label='Theoretical Uniform (Perfect)')
+    axes[0].set_title(f"PIT Histogram (Calibrated) for {ticker_name}")
+    axes[0].set_xlabel("Cumulative Probability ($u_t$)")
+    axes[0].set_ylabel("Frequency")
+    axes[0].legend()
+
+    # Plot 2: Rolling CRPS (Should be stable and low)
+    axes[1].plot(df_ret['CRPS'].rolling(20).mean(), color='darkorange')
+    axes[1].axhline(df_ret['CRPS'].mean(), color='black', linestyle='--', label='Average CRPS')
+    axes[1].set_title(f"Rolling CRPS for {ticker_name}")
+    axes[1].set_xlabel("Time (Days)")
+    axes[1].set_ylabel("CRPS Score")
+    axes[1].legend()
+
+    plt.tight_layout()
+    plt.show()
