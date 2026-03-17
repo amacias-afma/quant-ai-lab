@@ -1,26 +1,28 @@
-# Core & Data
+# ============================================================
+# AFMA Quant-AI Lab — Root Requirements
+# Covers all projects: 01_value_at_risk, 02_forecasting
+# ============================================================
+
+# ── Core Data & Math ────────────────────────────────────────
 numpy>=1.21.0
 pandas>=1.3.0
 scipy>=1.7.0
+
+# ── Financial Data ──────────────────────────────────────────
+yfinance>=0.2.0
+
+# ── Deep Learning ───────────────────────────────────────────
+torch>=2.0.0
+
+# ── Statistical Modelling ───────────────────────────────────
 statsmodels>=0.13.0
-yfinance
 
-# Deep Learning & Math
-torch>=1.10.0
-arch>=5.0
-scikit-learn
+# ── Visualization ───────────────────────────────────────────
+matplotlib>=3.5.0
+seaborn>=0.11.0
 
-# Web / API
-flask
-gunicorn
-pandas-gbq
+# ── Notebook ────────────────────────────────────────────────
+jupyterlab>=3.0.0
 
-# Cloud & Infra
-google-cloud-bigquery
-google-cloud-storage
-google-cloud-aiplatform>=1.38.0
-
-# Development & Testing
-pytest
-tqdm
-python-dotenv
+# ── Utilities ───────────────────────────────────────────────
+tqdm>=4.60.0
