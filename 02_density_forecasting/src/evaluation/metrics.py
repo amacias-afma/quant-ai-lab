@@ -227,4 +227,79 @@ def summarize_forecast_distribution(
         pd.DataFrame.from_dict(rows, orient="index", columns=["Value"])
         .round(6)
     )
-    return df
+    return df
+
+
+def rolling_ks_test(pit_series: pd.Series, window: int = 60) -> pd.Series:
+    """
+    Performs a Rolling Kolmogorov-Smirnov test to detect localized miscalibration.
+    
+    Args:
+        pit_series: pd.Series containing Probability Integral Transform values.
+        window: Integer representing the lookback window (e.g., 60 trading days).
+        
+    Returns:
+        pd.Series of p-values over time. When the p-value drops below 0.05,
+        the model has locally failed (miscalibrated).
+    """
+    # Initialize an empty series to store the p-values
+    p_values = pd.Series(index=pit_series.index, dtype=float)
+    
+    # We start calculating only after we have enough data for the first window
+    for i in range(window, len(pit_series)):
+        window_data = pit_series.iloc[i - window : i].dropna()
+        
+        # Ensure we have enough valid data points in the window to run the test
+        if len(window_data) >= (window * 0.8): 
+            _, p_val = kstest(window_data, 'uniform')
+            p_values.iloc[i] = p_val
+            
+    return p_values
+
+
+def block_ks_test(pit_series: pd.Series, block_size: int = 60, alpha: float = 0.05) -> pd.DataFrame:
+    """
+    Performs Kolmogorov-Smirnov tests on discrete, NON-OVERLAPPING blocks of time.
+    This eliminates the autocorrelation issue inherent in rolling windows.
+    
+    Args:
+        pit_series: pd.Series containing Probability Integral Transform values.
+        block_size: Integer representing the number of days per independent block.
+        alpha: Significance level for rejection.
+        
+    Returns:
+        pd.DataFrame summarizing the test results for each independent block.
+    """
+    # Drop NaNs to ensure clean data chunks
+    clean_pit = pit_series.dropna()
+    total_days = len(clean_pit)
+    
+    results = []
+    
+    # Iterate through the series in discrete jumps (block_size)
+    for start_idx in range(0, total_days, block_size):
+        end_idx = min(start_idx + block_size, total_days)
+        block_data = clean_pit.iloc[start_idx:end_idx]
+        
+        # Only test if we have a full (or nearly full) block
+        if len(block_data) >= (block_size * 0.8):
+            ks_stat, p_val = kstest(block_data.values, 'uniform')
+            
+            results.append({
+                'Start_Date': block_data.index[0],
+                'End_Date': block_data.index[-1],
+                'KS_Stat': ks_stat,
+                'P_Value': p_val,
+                'Status': '❌ FAILED' if p_val < alpha else '✅ PASSED'
+            })
+            
+    df_results = pd.DataFrame(results)
+    
+    # Calculate the total failure rate
+    failure_rate = (df_results['Status'] == '❌ FAILED').mean() * 100
+    print(f"\n--- INDEPENDENT BLOCK TEST SUMMARY ({block_size}-Day Windows) ---")
+    print(f"Total Independent Blocks: {len(df_results)}")
+    print(f"Blocks Failed (p < {alpha}): {sum(df_results['Status'] == '❌ FAILED')}")
+    print(f"True Failure Rate:        {failure_rate:.1f}%")
+    
+    return df_results

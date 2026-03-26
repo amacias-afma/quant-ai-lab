@@ -11,6 +11,30 @@ from pandas.io.formats.style import Styler
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
+def plot_rolling_ks(p_values: pd.Series, ticker_name: str = "Model", alpha: float = 0.05):
+    """
+    Plots the Rolling K-S p-value over time. Highlights the 'Danger Zone' 
+    where the model loses calibration and fails to predict the true distribution.
+    """
+    plt.style.use('bmh')
+    plt.figure(figsize=(14, 4))
+    
+    # Plot the rolling p-value
+    plt.plot(p_values.index, p_values, color='indigo', linewidth=1.5, label='Rolling K-S p-value')
+    
+    # Draw the Alpha Rejection Threshold
+    plt.axhline(alpha, color='red', linestyle='--', linewidth=2, label=f'Rejection Threshold (α={alpha})')
+    
+    # Shade the "Danger Zone" (Model Failure)
+    plt.fill_between(p_values.index, 0, alpha, color='red', alpha=0.2)
+    
+    plt.title(f"Dynamic Calibration Alarm: Rolling K-S Test for {ticker_name}")
+    plt.ylabel("p-value")
+    plt.xlabel("Time")
+    plt.legend(loc="upper left")
+    plt.tight_layout()
+    plt.show()
+
 def compute_descriptive_stats(prices: pd.Series, returns: pd.Series) -> Styler:
     """
     Computes and returns a styled descriptive statistics table for price and returns.
