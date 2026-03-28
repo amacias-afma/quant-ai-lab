@@ -303,3 +303,23 @@ def block_ks_test(pit_series: pd.Series, block_size: int = 60, alpha: float = 0.
     print(f"True Failure Rate:        {failure_rate:.1f}%")
     
     return df_results
+
+def calculate_fail_rate(predictions, df_ret, block_size, window, model, alpha=0.05):
+    def predictions_df(predictions, df_ret):
+        df_predictions = pd.DataFrame(predictions)
+        df_predictions.index = df_ret.index
+        df_predictions.dropna(inplace=True)
+        df_return_aux = df_ret[df_ret.index.isin(df_predictions.index)].copy()
+
+        return df_predictions, df_return_aux
+        
+    df_ret_model, df_ret_aux = predictions_df(predictions, df_ret)
+    if model == 'Garch':
+        df_evaluation = evaluate_forecasts(df_ret_aux.iloc[window:, 'returns'], df_ret_model.iloc[window:])
+    else:
+        df_evaluation = evaluate_forecasts(df_ret_aux['returns'], df_ret_model.values)
+
+    df_results = block_ks_test(df_evaluation['PIT'], block_size=block_size)
+    df_results['Fail'] = 1
+    df_results.loc[df_results['P_Value'] >= alpha, 'Fail'] = 0
+    return sum(df_results['Fail']) / len(df_results)
