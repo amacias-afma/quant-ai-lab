@@ -250,40 +250,38 @@ def plot_rolling_ks(
 
 
 
-# def plot_rolling_ks(
-#     p_values: pd.Series,
-#     ticker_name: str = "Model",
-#     alpha: float = 0.05,
-# ) -> None:
-#     """
-#     Rolling K-S p-value over time — dynamic calibration alarm chart.
+def plot_rolling_ks_01(
+    p_values: pd.Series,
+    ticker_name: str = "Model",
+    alpha: float = 0.05,
+) -> None:
+    """
+    Rolling K-S p-value over time — dynamic calibration alarm chart.
 
-#     Highlights the "danger zone" (p-value < α) where the model has locally
-#     lost calibration and its forecasted distribution departs from reality.
+    Highlights the "danger zone" (p-value < α) where the model has locally
+    lost calibration and its forecasted distribution departs from reality.
 
-#     Args:
-#         p_values:    pd.Series of rolling K-S p-values (from `rolling_ks_test`).
-#         ticker_name: Asset/model label shown in the title.
-#         alpha:       Rejection threshold drawn as a red dashed line.
-#     """
-#     plt.style.use('bmh')
-#     plt.figure(figsize=(14, 4))
+    Args:
+        p_values:    pd.Series of rolling K-S p-values (from `rolling_ks_test`).
+        ticker_name: Asset/model label shown in the title.
+        alpha:       Rejection threshold drawn as a red dashed line.
+    """
+    plt.style.use('bmh')
+    plt.figure(figsize=(14, 4))
 
-#     plt.plot(p_values.index, p_values, color='indigo', linewidth=1.5,
-#              label='Rolling K-S p-value')
-#     plt.axhline(alpha, color='red', linestyle='--', linewidth=2,
-#                 label=f'Rejection Threshold (α={alpha})')
-#     plt.fill_between(p_values.index, 0, alpha, color='red', alpha=0.2,
-#                      label='Danger Zone')
+    plt.plot(p_values.index, p_values, color='indigo', linewidth=1.5,
+             label='Rolling K-S p-value')
+    plt.axhline(alpha, color='red', linestyle='--', linewidth=2,
+                label=f'Rejection Threshold (α={alpha})')
+    plt.fill_between(p_values.index, 0, alpha, color='red', alpha=0.2,
+                     label='Danger Zone')
 
-#     plt.title(f"Dynamic Calibration Alarm: Rolling K-S Test for {ticker_name}")
-#     plt.ylabel("p-value")
-#     plt.xlabel("Time")
-#     plt.legend(loc="upper left")
-#     plt.tight_layout()
-#     ax.set_ylim(0.0, ylim) 
-
-#     plt.show()
+    plt.title(f"Dynamic Calibration Alarm: Rolling K-S Test for {ticker_name}")
+    plt.ylabel("p-value")
+    plt.xlabel("Time")
+    plt.legend(loc="upper left")
+    plt.tight_layout()
+    plt.show()
 
 
 # ---------------------------------------------------------------------------
