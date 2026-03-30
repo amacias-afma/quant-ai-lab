@@ -1,131 +1,64 @@
-# AFMA Quant-AI Lab | Project 02: Density Forecasting
+# 📊 Project 02: Density Forecasting & The Parametric Ceiling
 
-> **Chapter 01 — Problem Definition & Baselines**
+> **From Single-Point Estimates to Full Probability Distributions.**
 
----
+Most quantitative models split into two worlds: the *Alpha World* (mean/prediction) and the *Risk World* (tails/loss). Density forecasting unifies both: the mean of the forecast distribution is your alpha signal, and the tails are your risk limits — **one model, one source of truth.**
 
-## 🎯 Objective
+## 🎯 The Objective & The Classical Ceiling
+The goal of this project is to build an algorithm that accurately forecasts the probability distribution of $T+1$ returns. 
 
-Move beyond predicting a **single number** (e.g., VaR) to forecasting the **entire probability distribution** of returns.
+Before introducing Deep Learning, we rigorously established the **Parametric Ceiling**. We built industry-standard classical models (GARCH, Student-t) and subjected them to a strict **60-Day Independent Block K-S Test** across three highly volatile stress-test assets: `ARKK` (Macro-Regime Shifts), `USO` (Exogenous Supply Shocks), and `BTC-USD` (Structural Fat Tails).
 
-Most quant models split into two worlds: the *Alpha World* (mean/prediction) and the *Risk World* (tails/loss). Density forecasting unifies both: the mean of the forecast distribution is your alpha signal, and the tails are your risk limits — **one model, one source of truth.**
+### 📉 Empirical Motivation: The Baseline Failure
+*Failure Rate by Asset (Percentage of 60-Day Regimes Failed):*
 
----
+| Asset | Naive Gaussian | Student-t (Fat Tails) | GARCH(1,1) (Volatility Clustering) |
+| :--- | :--- | :--- | :--- |
+| **ARKK** | 34.6% | 26.9% | 19.2% |
+| **USO** | 30.8% | 19.2% | 15.4% |
+| **BTC-USD** | 45.0% | 32.5% | 37.5% |
 
-## 💡 Key Idea: From Quantiles to Densities
+**The Classical Flaw:** These models are strictly *backward-looking*. They rely entirely on historical data, adapting to market crashes only *after* they happen. 
 
-Instead of outputting a single value like a point forecast or a single quantile, our model outputs the **parameters of a probability distribution** (e.g., μ and σ for a Gaussian, or μ, σ, ν for a Student-t). This allows us to reason probabilistically about future returns.
+## 🏆 Our Classical Champion: The VIX-Scaled Student-t
+To push the parametric equations to their absolute limit, we built a forward-looking hybrid model. By coupling the structural fat tails of the Student-t distribution with the regime-aware, options-implied scaling of the VIX (optimized daily via Nelder-Mead with factor normalization), we drastically reduced the calibration failure rates during crises like the COVID-19 crash.
+
+**The Challenge Ahead:** The VIX model relies on a rigid, linear equation tied to the US equity market. It cannot capture the *idiosyncratic* non-linear geometry of individual assets (like Bitcoin). To solve this, we must transition to AI.
 
 ---
 
 ## 📐 Evaluation Framework
+We evaluate every model (Classical and AI) through three strict lenses:
 
-We evaluate every model through three complementary lenses:
-
-| Metric | Question | Ideal Value |
-|--------|----------|-------------|
-| **PIT** (Probability Integral Transform) | Is the model *calibrated*? (honest about uncertainty) | Flat uniform histogram |
-| **CRPS** (Continuous Ranked Probability Score) | How close is the *whole distribution* to reality? | As low as possible (0 = perfect) |
-| **Log-Likelihood** | How much probability did we assign to what actually happened? | As high (least negative) as possible |
-
-### The Acceptance Criterion
-
-A model earns the right to replace its predecessor **only if** it produces a **more uniform PIT distribution** than the current baseline — measured by a lower KS statistic and a higher p-value.
-
-> *Complexity must earn its place. Every model must beat the one before it.*
+1. **PIT (Probability Integral Transform):** Is the model *calibrated*? (Measured via the Kolmogorov-Smirnov test).
+2. **CRPS (Continuous Ranked Probability Score):** How close is the *whole distribution* to reality?
+3. **Log-Likelihood:** How much probability did we assign to what actually happened?
 
 ---
 
-## 🏗️ Project Structure
+## 🗺️ Research Roadmap
 
-```
-02_forecasting/
-│
-├── notebooks/
-│   └── 01_problem_definition_and_baselines_v2.ipynb   # Main notebook (Chapter 01)
-│
-├── src/
-│   ├── data/
-│   │   └── data_loader.py          # Fetch and prepare asset price data
-│   │
-│   ├── evaluation/
-│   │   ├── metrics.py              # CRPS, Log-Likelihood, PIT, financial risk summary
-│   │   └── plotting.py             # PIT histogram, CRPS rolling plot, distribution plot
-│   │
-│   ├── models/
-│   │   └── baselines.py            # Historical Simulation, Gaussian, Student-t rolling baselines
-│   │
-│   └── features/                   # (reserved for feature engineering in future chapters)
-│
-├── data/                           # Raw and processed data (gitignored)
-├── config/                         # Configuration files
-├── tests/                          # Unit tests
-└── requirements.txt
-```
+| Phase | Status | Focus |
+|-------|--------|-------|
+| **01** | ✅ | Problem definition, evaluation framework (CRPS/PIT), and naive baselines. |
+| **02** | ✅ | **The Parametric Ceiling:** GARCH, VIX-Scaled baselines, and optimizer death-loop resolution. |
+| **03** | 🔜 | **AI Transition:** Extracting market geometry using **Path Signatures**. |
+| **04** | 🔜 | **Neural SDEs:** Training a continuous-time generator to defeat the VIX-Scaled champion. |
 
 ---
 
-## 📓 Notebook: `01_problem_definition_and_baselines_v2.ipynb`
+## 📚 References & Literature
 
-### Structure
+This project builds upon foundational research in Rough Path Theory, Deep Learning, and Quantitative Finance:
 
-| Section | Description |
-|---------|-------------|
-| **1. Project Lineage** | Evolution from Deep VaR (Project 01) to full density forecasting |
-| **2. Motivation** | Why Alpha and Risk should share one model |
-| **3. Problem Definition** | The non-stationarity trap and the "one observation" dilemma |
-| **4. Methodology** | The augmented state space (endogenous + exogenous signals) |
-| **5. The Benchmarks** | Historical Gaussian and Historical Student-t baselines |
-| **6. Success Metrics** | Deep dive into PIT, CRPS, and Log-Likelihood |
-| **7. The Construction Framework** | Three steps before training any model |
-| **Setup & Imports** | Environment setup |
-| **Step 2 in Action** | Synthetic experiments (Perfect World, Oracle, Broken Oracle) |
-| **Step 3 in Action** | Real market data — baseline evaluation on AAPL |
-| **Results Registry** | Side-by-side comparison table of all baselines |
-| **Next Steps** | Roadmap to future notebooks |
+**Path Signatures & Rough Path Theory:**
+* Lyons, T. (1998). *Differential equations driven by rough signals*. Revista Matemática Iberoamericana.
+* Kidger, P., Bonnier, P., Perez Arribas, I., Salvi, C., & Lyons, T. (2019). *Deep Signature Transforms*. NeurIPS.
 
-### Baselines
+**Neural Stochastic Differential Equations:**
+* Chen, R. T., et al. (2018). *Neural Ordinary Differential Equations*. NeurIPS.
+* Kidger, P., Foster, J., Li, X., & Lyons, T. (2021). *Neural SDEs as Infinite-Dimensional GANs*. ICML.
 
-| Model | Distribution | Key Property |
-|-------|-------------|--------------|
-| **Historical Gaussian** | N(μ, σ) — rolling 252-day window | Simple, fast, ignores fat tails |
-| **Historical Student-t** | t(μ, σ, ν) — MLE fit, rolling 252-day | Fat-tail aware; industry-standard upgrade |
-
----
-
-## 🗺️ Roadmap
-
-| Notebook | Focus |
-|----------|-------|
-| **01** ✅ | Problem definition, evaluation framework, statistical baselines |
-| **02** 🔜 | GARCH/EGARCH — classical volatility baseline |
-| **03** 🔜 | First Neural Network — Deep Hybrid, trained with log-likelihood |
-| **04** 🔜 | Physics-Informed calibration (PINN) — add statistical constraints |
-| **05** 🔜 | Augmented financial signals (VIX, bond yields, inflation, DXY) |
-| **06** 🔜 | Non-financial signals (sentiment, geopolitical/macro event risk) |
-
----
-
-## ⚙️ Setup
-
-```bash
-# 1. Create and activate the conda environment
-conda create -n quant-ai-lab python=3.10
-conda activate quant-ai-lab
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Launch the notebook
-jupyter notebook notebooks/01_problem_definition_and_baselines_v2.ipynb
-```
-
----
-
-## 🔗 Related Projects
-
-- **Project 01 — Deep VaR:** Physics-informed neural network for single-quantile VaR forecasting (the predecessor to this work)
-
----
-
-*Part of the AFMA Quant-AI Lab research series.*
+**Probabilistic Evaluation & Volatility Modeling:**
+* Gneiting, T., & Raftery, A. E. (2007). *Strictly Proper Scoring Rules, Prediction, and Estimation*. JASA.
+* Bollerslev, T. (1986). *Generalized Autoregressive Conditional Heteroskedasticity*. Journal of Econometrics.
