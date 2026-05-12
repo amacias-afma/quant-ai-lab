@@ -364,3 +364,53 @@ def rolling_vix_scaled_student_t(
             print(f"Processed Day {idx}/{T} | β = {optimal_beta:.3f} | df = {df_train:.2f}")
 
     return predictions
+
+
+import torch
+import torch.nn as nn
+import numpy as np
+
+# The 9 Anchor Points
+# QUANTILES = [0.01, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95, 0.99]
+QUANTILES = [0.01, 0.05, 0.25, 0.50, 0.75, 0.95, 0.99]
+
+class QuantileSkeletonNet(nn.Module):
+    def __init__(self, input_dim=9):
+        super(QuantileSkeletonNet, self).__init__()
+        
+        self.hidden = nn.Sequential(
+            nn.Linear(input_dim, 8),
+            nn.ReLU(),
+            nn.Dropout(p=0.3)
+        )
+        
+        self.output_head = nn.Linear(8, len(QUANTILES))
+        
+    def forward(self, x):
+        # FIX: Pass the input through the hidden layer first!
+        h = self.hidden(x) 
+        
+        # Then pass the hidden state to the output head
+        raw_outputs = self.output_head(h)
+        
+        # MUST SORT to prevent Quantile Crossing
+        sorted_outputs, _ = torch.sort(raw_outputs, dim=1)
+        return sorted_outputs
+
+def pinball_loss(predictions, target, quantiles):
+    """
+    Calculates the Quantile Loss (Pinball Loss).
+    target shape: (batch_size, 1)
+    predictions shape: (batch_size, num_quantiles)
+    """
+    losses = []
+    for i, q in enumerate(quantiles):
+        # Calculate error for this specific quantile
+        error = target - predictions[:, i:i+1]
+        
+        # The Pinball penalty
+        loss_for_q = torch.max(q * error, (q - 1.0) * error)
+        losses.append(loss_for_q)
+        
+    # Combine and average across all quantiles and the batch
+    return torch.cat(losses, dim=1).mean()

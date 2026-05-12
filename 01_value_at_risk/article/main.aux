@@ -1,0 +1,38 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{2}{section.1}\protected@file@percent }
+\citation{bcbs2019frtb}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Regulatory Context: Basel IV and FRTB}{3}{section.2}\protected@file@percent }
+\citation{kupiec1995techniques}
+\citation{hochreiter1997long}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Methodology}{5}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}The Historical VaR Baseline}{5}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}The Naive LSTM Architecture}{5}{subsection.3.2}\protected@file@percent }
+\citation{koenker1978regression}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Anchored Quantile Regression (Physics-Informed)}{6}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Data and Experimental Setup}{7}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Data Acquisition and Feature Engineering}{7}{subsection.4.1}\protected@file@percent }
+\citation{kupiec1995techniques}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Walk-Forward Backtesting Protocol}{8}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Evaluation Metrics}{8}{subsection.4.3}\protected@file@percent }
+\citation{kupiec1995techniques,christoffersen1998evaluating}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results and Risk Validation}{9}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Model Safety: Kupiec Backtesting}{9}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Capital Efficiency}{10}{subsection.5.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Out-of-Sample Backtesting Results (99\% VaR, Kupiec POF Test)}}{10}{table.1}\protected@file@percent }
+\newlabel{tab:results}{{1}{10}{Out-of-Sample Backtesting Results (99\% VaR, Kupiec POF Test)}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Why Not Simply Use Historical VaR?}{10}{subsection.5.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Rolling 99\% VaR Forecasts over the out-of-sample window for the Naive LSTM, Historical VaR baseline, and Anchored LSTM. The Anchored LSTM adapts to volatility regimes while maintaining Kupiec-validated safety bounds against realized BTC/USD log-returns.}}{11}{figure.1}\protected@file@percent }
+\newlabel{fig:var_forecast}{{1}{11}{Rolling 99\% VaR Forecasts over the out-of-sample window for the Naive LSTM, Historical VaR baseline, and Anchored LSTM. The Anchored LSTM adapts to volatility regimes while maintaining Kupiec-validated safety bounds against realized BTC/USD log-returns}{figure.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{12}{section.6}\protected@file@percent }
+\bibstyle{plainnat}
+\bibdata{references}
+\bibcite{bcbs2019frtb}{{1}{2019}{{Basel Committee on Banking Supervision}}{{}}}
+\bibcite{christoffersen1998evaluating}{{2}{1998}{{Christoffersen}}{{}}}
+\bibcite{hochreiter1997long}{{3}{1997}{{Hochreiter and Schmidhuber}}{{}}}
+\bibcite{koenker1978regression}{{4}{1978}{{Koenker and Bassett~Jr}}{{}}}
+\bibcite{kupiec1995techniques}{{5}{1995}{{Kupiec}}{{}}}
+\@writefile{toc}{\contentsline {section}{Data and Code Availability}{14}{section*.4}\protected@file@percent }
+\gdef \@abspage@last{14}

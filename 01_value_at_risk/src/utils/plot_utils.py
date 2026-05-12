@@ -196,7 +196,7 @@ def improved_price_plot(df, ticker_name, column='price'):
             fontsize=9, verticalalignment='top',
             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
-def plot_var_results(df_results, models=None):
+def plot_var_results(df_results, models=None, file_name=None):
         # Reset the index to get clean datetime values
         df_plot = df_results.copy()
         df_plot.loc[df_plot['realized'] > 0, 'realized'] = np.nan
@@ -245,6 +245,8 @@ def plot_var_results(df_results, models=None):
 
         # Tight layout to prevent label cutoff
         plt.tight_layout()
+        if file_name:
+                plt.savefig(f'../images/{file_name}', dpi=300, bbox_inches='tight')
         plt.show()
 
 import matplotlib.dates as mdates

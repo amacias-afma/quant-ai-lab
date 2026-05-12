@@ -1,0 +1,38 @@
+% --- File: sections/03_methodology.tex ---
+
+The core objective of our architecture is to dynamically forecast the 1-day ahead 99\% Value-at-Risk (VaR), denoted as $\text{VaR}_{t+1}^{0.01}$, utilizing historical high-frequency market data. To contextualize the hybrid approach, we first formalize the baseline models that represent the two ends of the modeling spectrum: the non-parametric historical approach and the unconstrained neural network.
+
+\subsection{The Historical VaR Baseline}
+Historical Simulation (HS) is the industry-standard non-parametric baseline, dominant in institutional risk systems due to its distributional agnosticism. Given a rolling window of $W$ past realized log-returns $\{r_{t-W+1}, \ldots, r_t\}$, the 1-day ahead VaR at confidence level $1 - q$ is simply the empirical quantile of that window:
+\begin{equation}
+    \text{VaR}_{t+1}^q = Q_q\!\left(r_{t-W+1}, \ldots, r_t\right)
+\end{equation}
+where $Q_q(\cdot)$ denotes the $q$-th order statistic of the sample. While parameter-free and straightforward to implement, Historical VaR suffers from the well-documented ``ghost effect'': a stress event influences the VaR estimate for exactly $W$ days, then drops out of the window abruptly, causing sudden artificial jumps. During volatility regime changes, this lag creates either persistent over-estimation (capital drag during calm regimes) or dangerous under-estimation (insufficient reserves immediately after a spike).
+
+\subsection{The Naive LSTM Architecture}
+To capture non-linear temporal dependencies and volatility clustering without strict distributional assumptions, we introduce a pure Deep Learning baseline using a Long Short-Term Memory (LSTM) network \cite{hochreiter1997long}. Let $\bm{x}_t$ be a feature vector containing historical returns, realized volatility, and trading volumes. The LSTM maintains a hidden state $\bm{h}_t$ and a cell state $\bm{c}_t$, updated as follows:
+\begin{equation}
+    \bm{h}_t, \bm{c}_t = \text{LSTM}(\bm{x}_t, \bm{h}_{t-1}, \bm{c}_{t-1}; \bm{\Theta})
+\end{equation}
+where $\bm{\Theta}$ represents the learned network parameters. The output layer projects the hidden state to a VaR forecast: $\widehat{\text{VaR}}_{t+1}^q = \bm{W}_{out} \bm{h}_t + b_{out}$.
+
+However, training a ``Naive'' LSTM using standard symmetric loss functions like Mean Squared Error (MSE) is fundamentally flawed for risk applications. MSE optimizes for the conditional mean, whereas VaR is strictly a quantile property. Furthermore, an unconstrained neural network operating in a noisy, non-stationary environment---such as our extreme stress-testing proxy---is highly susceptible to overfitting, learning market noise rather than true structural risk dynamics.
+
+\subsection{Anchored Quantile Regression (Physics-Informed)}
+To combine the interpretability of the Historical VaR baseline with the adaptive capacity of the LSTM, we introduce an ``Anchored'' architecture. We achieve this by redefining the network's objective function using an Asymmetric Quantile Loss (also known as the Pinball Loss) \cite{koenker1978regression} and injecting a rolling Parametric VaR estimate as a structural prior---akin to Physics-Informed Neural Networks (PINNs) where physical laws constrain the solution space. This separation is deliberate: the Historical VaR serves as the empirical comparison benchmark, while the parametric prior acts as the safety regularizer inside the loss function.
+
+The network is trained to directly minimize the asymmetric loss $L_q$ for a given target quantile $q$:
+\begin{equation}
+    L_q(r_{t+1}, \widehat{\text{VaR}}_{t+1}^q) = 
+    \begin{cases} 
+      q (r_{t+1} - \widehat{\text{VaR}}_{t+1}^q) & \text{if } r_{t+1} \geq \widehat{\text{VaR}}_{t+1}^q \\
+      (1 - q) (\widehat{\text{VaR}}_{t+1}^q - r_{t+1}) & \text{if } r_{t+1} < \widehat{\text{VaR}}_{t+1}^q
+    \end{cases}
+\end{equation}
+
+In our framework, the total loss function $\mathcal{L}_{total}$ is augmented with a regularization penalty $\lambda$ that ``anchors'' the neural network's output to the rolling Parametric VaR estimate ($\text{VaR}_{param}$):
+\begin{equation}
+    \mathcal{L}_{total} = \frac{1}{N} \sum_{t=1}^{N} L_q(r_{t+1}, \widehat{\text{VaR}}_{t+1}^q) + \lambda \left\| \widehat{\text{VaR}}_{t+1}^q - \text{VaR}_{param, t+1}^q \right\|^2
+\end{equation}
+
+This architectural design ensures that the deep learning model focuses on optimizing the 1st percentile of the return distribution (via the Pinball Loss) while the anchoring penalty $\lambda$ acts as a regulatory safety rail. It prevents the LSTM from generating nonsensical predictions during unprecedented Black Swan events, effectively resolving the "black box" vulnerability and ensuring compliance with Basel IV backtesting standards.

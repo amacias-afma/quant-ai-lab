@@ -1,5 +1,7 @@
 from datetime import date, timedelta
 import pandas as pd
+import numpy as np
+
 import yfinance as yf
 
 
@@ -10,6 +12,7 @@ def fetch_asset_data(
     # Legacy aliases kept for backward compatibility
     start_date: date = None,
     end_date: date = None,
+    features: list = None
 ) -> pd.DataFrame:
     """
     Fetch historical OHLCV data from Yahoo Finance.
@@ -44,6 +47,15 @@ def fetch_asset_data(
 
     df = yf.download(ticker, start=resolved_start, end=resolved_end, progress=False)
     df.columns = df.columns.get_level_values(0)  # flatten MultiIndex if present
-    df = df[['Close']].rename(columns={'Close': 'prices'})
+    print(df.columns)
+    df_final = df[['Close']].rename(columns={'Close': 'prices'})
+    if 'volume' in features:
+        df_final['volume'] = df['Volume']
+    
+    # Compute log-returns for the models
+    df_final['returns'] = np.log(df_final['prices']).diff().dropna()
 
-    return df
+    if 'std' in features:
+        df_final['std'] = df_final['returns'].rolling(90).std()
+    
+    return df_final

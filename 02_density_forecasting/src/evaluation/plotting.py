@@ -1,7 +1,7 @@
 """
 Visualization for Density Forecasting.
 
-This module contains reusable plotting functions organized in three layers:
+This module contains reusable plotting functions organized in four layers:
 
 1. EDA (Exploratory Data Analysis):
    - compute_descriptive_stats  — Styled summary statistics table
@@ -13,6 +13,9 @@ This module contains reusable plotting functions organized in three layers:
 
 3. Risk Summary:
    - plot_forecast_distribution — Histogram + key risk/return metrics table
+
+4. Cross-Chapter Comparison:
+   - plot_model_comparison      — Classical vs. Neural failure-rate table + rolling KS
 """
 
 import numpy as np
@@ -372,6 +375,174 @@ def plot_forecast_distribution(
         else:
             cell.set_facecolor("#f8f9fa")
         cell.set_edgecolor("#dee2e6")
+
+    plt.tight_layout()
+    plt.show()
+
+
+# ---------------------------------------------------------------------------
+# 4. Cross-Chapter Model Comparison
+# ---------------------------------------------------------------------------
+
+def plot_model_comparison(
+    classical_failure_rates: pd.DataFrame,
+    neural_failure_rates: dict,
+    pit_series_dict: dict,
+    volatile_periods: dict,
+    block_size: int = 66,
+    rolling_window: int = 252,
+) -> None:
+    """Classical vs Neural Network — side-by-side failure-rate table + rolling KS.
+
+    Reproduces the two visualizations used throughout Chapter 02 to formally
+    compare the best classical models (from ``02_the_parametric_ceiling.ipynb``)
+    against the deep hybrid networks (from ``03_01.ipynb``):
+
+    **Panel 1 — Failure-Rate Heatmap Table**
+      Rows = assets, columns = models (classical + neural).
+      Each cell shows the fraction of 66-day independent blocks that failed
+      the KS test.  Cells are colour-coded: green = 0 %, yellow = < 15 %,
+      red = ≥ 15 %, making the improvement immediately visible.
+
+    **Panel 2 — Rolling KS p-value (per asset)**
+      One subplot per asset.  The VIX-Scaled Student-t (classical champion)
+      and the neural network are plotted on the same axes so the reader can
+      see *when* and *where* the neural model improves.
+
+    Args:
+        classical_failure_rates: DataFrame indexed by asset with columns
+            ['gauss', 'student', 'garch', 'vix_gauss', 'vix_student'].
+            This is the ``df_results_ratio`` saved as ``02_results.csv``.
+        neural_failure_rates:    Dict mapping asset ticker → failure rate (float).
+            Keys must match the index of ``classical_failure_rates``.
+            Example: ``{'BTC-USD': 0.0, 'ARKK': 0.0, 'USO': 0.0}``
+        pit_series_dict:         Nested dict of PIT pd.Series for the rolling KS
+            panel.  Structure::
+
+                {
+                    'ARKK':    {'vix_student': <pd.Series>, 'neural': <pd.Series>},
+                    'USO':     {'vix_student': <pd.Series>, 'neural': <pd.Series>},
+                    'BTC-USD': {'vix_student': <pd.Series>, 'neural': <pd.Series>},
+                }
+
+        volatile_periods: Dict of ``{event_name: (start_date, end_date)}`` strings
+            used to shade background crisis periods.
+        block_size:      Block size used in the KS tests (for axis labels).
+        rolling_window:  Window (in trading days) for the rolling KS p-value.
+    """
+    from scipy.stats import kstest
+
+    tickers = list(classical_failure_rates.index)
+
+    # ------------------------------------------------------------------ #
+    # Panel 1 — Failure-Rate Heatmap Table
+    # ------------------------------------------------------------------ #
+    col_labels = [
+        'Gaussian', 'Student-t', 'GARCH(1,1)',
+        'VIX Gaussian', 'VIX Student-t',
+        'Neural Net\n(Ch. 03)',
+    ]
+    col_keys_classical = ['gauss', 'student', 'garch', 'vix_gauss', 'vix_student']
+
+    # Build numeric matrix (rows = assets, cols = models)
+    matrix = []
+    for ticker in tickers:
+        row = [classical_failure_rates.loc[ticker, k] for k in col_keys_classical]
+        row.append(neural_failure_rates.get(ticker, np.nan))
+        matrix.append(row)
+    matrix = np.array(matrix, dtype=float)
+
+    # Colour map: green at 0, yellow at ~0.15, red at 0.30+
+    fig_table, ax_t = plt.subplots(figsize=(13, 3))
+    ax_t.axis('off')
+
+    cell_text = [[f"{v:.1%}" for v in row] for row in matrix]
+    table = ax_t.table(
+        cellText=cell_text,
+        rowLabels=tickers,
+        colLabels=col_labels,
+        cellLoc='center',
+        rowLoc='center',
+        loc='center',
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(11)
+    table.scale(1.1, 2.2)
+
+    # Style: header + row-label cells
+    for (row, col), cell in table.get_celld().items():
+        cell.set_edgecolor('#dee2e6')
+        if row == 0 or col == -1:
+            # Header / row-label
+            cell.set_facecolor('#2c3e50')
+            cell.set_text_props(color='white', fontweight='bold')
+        else:
+            val = matrix[row - 1][col]
+            # Traffic-light colouring
+            if np.isnan(val):
+                cell.set_facecolor('#eeeeee')
+            elif val == 0.0:
+                cell.set_facecolor('#d4edda')   # green
+                cell.set_text_props(color='#155724', fontweight='bold')
+            elif val < 0.15:
+                cell.set_facecolor('#fff3cd')   # yellow
+                cell.set_text_props(color='#856404')
+            else:
+                cell.set_facecolor('#f8d7da')   # red
+                cell.set_text_props(color='#721c24')
+
+            # Highlight the last column (neural) with a border
+            if col == len(col_labels) - 1:
+                cell.set_linewidth(2.5)
+                cell.set_edgecolor('#2c3e50')
+
+    fig_table.suptitle(
+        f'KS Block-Test Failure Rate ({block_size}-Day Windows)\n'
+        'Classical Baselines (Ch. 02)  vs.  Deep Hybrid Network (Ch. 03)',
+        fontsize=13, fontweight='bold', y=1.02,
+    )
+    plt.tight_layout()
+    plt.show()
+
+    # ------------------------------------------------------------------ #
+    # Panel 2 — Rolling KS P-Value: Classical Champion vs Neural Network
+    # ------------------------------------------------------------------ #
+    def _rolling_ks_pvalue(pit: pd.Series, window: int) -> pd.Series:
+        """Compute rolling KS p-values for a PIT series."""
+        def _ks(arr):
+            _, p = kstest(arr[~np.isnan(arr)], 'uniform')
+            return p
+        return pit.rolling(window).apply(_ks, raw=True)
+
+    fig_ks, axes = plt.subplots(len(tickers), 1, figsize=(14, 5 * len(tickers)), sharex=False)
+    if len(tickers) == 1:
+        axes = [axes]
+
+    fig_ks.suptitle(
+        f'Rolling {rolling_window}-Day KS Calibration: '
+        'VIX Student-t (Classical Champion) vs. Neural Network',
+        fontsize=14, fontweight='bold', y=1.01,
+    )
+
+    for i, ticker in enumerate(tickers):
+        ax = axes[i]
+        series_dict = pit_series_dict.get(ticker, {})
+
+        pval_specs = []
+        if 'vix_student' in series_dict:
+            pv = _rolling_ks_pvalue(series_dict['vix_student'], rolling_window)
+            pval_specs.append({'name': 'VIX Student-t (Classical Champion)',
+                               'values': pv, 'color': '#e74c3c'})
+        if 'neural' in series_dict:
+            pv = _rolling_ks_pvalue(series_dict['neural'], rolling_window)
+            pval_specs.append({'name': 'Deep Hybrid Network (Ch. 03)',
+                               'values': pv, 'color': '#2ecc71'})
+
+        plot_rolling_ks(ax, ticker, volatile_periods, pval_specs, i)
+
+        if i == 0:
+            ax.legend(loc='upper right', fontsize=10,
+                      bbox_to_anchor=(1.0, 1.30), ncol=2)
 
     plt.tight_layout()
     plt.show()

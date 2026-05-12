@@ -1,0 +1,33 @@
+% --- File: sections/06_conclusion.tex ---
+
+This paper addressed the fundamental tension in modern institutional risk management: the trade-off between the structural rigidity of traditional econometrics and the dangerous flexibility of unconstrained Deep Learning. As global markets experience increasingly frequent macroeconomic regime shifts and extreme volatility, the capital drag imposed by overly conservative legacy models has become commercially unsustainable. Conversely, naive machine learning models consistently fail to satisfy strict regulatory backtesting constraints during out-of-sample stress events.
+
+To resolve this, we introduced an ``Anchored'' LSTM architecture, heavily inspired by Physics-Informed Neural Networks. By constraining a custom Asymmetric Quantile Loss function with a rolling parametric statistical prior, we engineered a model that successfully bridges the gap between deep temporal learning and regulatory safety.
+
+Utilizing highly leptokurtic BTC/USD returns as a worst-case stress-testing proxy, our empirical results demonstrated that the proposed architecture successfully averts the calibration failures inherent in unconstrained neural networks. The Anchored model strictly satisfied the Kupiec Proportion of Failures test, achieving a breach rate of \PhysicsInformedBreachRate{} (\PhysicsInformedKupiec{}) --- the closest of all tested architectures to the theoretical 1\% target. Furthermore, by dynamically tightening VaR bands during low-volatility regimes, the model freed up \capEfficiencyBps{} of capital reserves compared to the unconstrained Naive LSTM baseline.
+
+These results suggest that a physics-informed hybrid approach is a promising direction for regulatory capital optimization in institutional risk systems.
+
+\subsection*{Limitations}
+
+The conclusions of this study should be interpreted in light of the following constraints:
+
+\begin{itemize}
+    \item \textbf{Single-asset validation.} All experiments are conducted on BTC/USD data, chosen deliberately as a worst-case stress-testing proxy. The architecture has not yet been validated on traditional equity, FX, or fixed-income portfolios. Cross-asset generalization is a key direction for future work.
+    \item \textbf{Limited model benchmarks.} The study compares three architectures: a Historical VaR baseline, a Naive LSTM, and the proposed Anchored LSTM. More extensive benchmarking against GARCH-family models, Filtered Historical Simulation, and ES-based approaches would strengthen the empirical claims.
+    \item \textbf{Reliance on parametric prior.} The effectiveness of the anchoring mechanism depends on the quality of the rolling parametric VaR estimate used as a prior. In environments where the parametric model itself is severely misspecified, the anchor may constrain the LSTM in undesirable ways.
+    \item \textbf{Scope limited to VaR.} The current framework targets 99\% VaR, which is the regulatory backtesting gate but not the ultimate capital measure under FRTB. Extension to 97.5\% Expected Shortfall (ES) is the primary next step.
+\end{itemize}
+
+\subsection*{Research Roadmap: From VaR to Expected Shortfall}
+
+This paper establishes the first stage of a two-phase research program:
+
+\textbf{Stage 1 (this paper) --- VaR Validation:} Demonstrate that a physics-informed LSTM can satisfy the regulatory Kupiec backtesting gate while maintaining capital efficiency. This is the mandatory precondition for any IMA-eligible risk model.
+
+\textbf{Stage 2 (future work) --- ES Density Forecasting:} Extend the architecture to forecast the complete conditional return distribution via a Mixture Density Network (MDN). This enables direct 97.5\% ES estimation, aligning fully with the FRTB capital calculation mandate and unlocking the alpha-generation applications described below.
+
+\subsection*{The Road to When Risk and Alpha Collide: Projecting the Full Distribution}
+This study concludes ``Project 1'' of the Wenris initiative. The results prove that risk can be ``anchored'' to provide institutional safety. However, the true convergence of Risk and Alpha occurs when we move beyond point-estimates (VaR) toward full \textbf{Density Forecasting}.
+
+Our upcoming work, \textit{Project 2: When Risk and Alpha Collide}, will evolve this architecture into a Mixture Density Network (MDN). By forecasting the entire probability distribution of returns, the framework will transition from a defensive guardrail to a predictive engine capable of identifying asymmetric profit opportunities, effectively merging the mandates of the Risk Management and Trading desks.
