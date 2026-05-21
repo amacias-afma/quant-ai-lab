@@ -98,6 +98,7 @@ def create_features(
     df: pd.DataFrame,
     df_vix: pd.DataFrame,
     window_size: int,
+    n_lags: int=1
 ) -> pd.DataFrame:
     """Build the full feature matrix for the walk-forward backtest.
 
@@ -127,14 +128,15 @@ def create_features(
     """
     df_features = 100 * df[['returns']].copy()
     df_features = pd.concat([df_features, df_vix], axis=1)
+    df_features.ffill(inplace=True)
     df_features['VIX'] = df_features['VIX'].shift()       # no look-ahead
 
-    features_lags(df_features)
+    features_lags(df_features, n_lags)
 
     params_df = rolling_t_fit(df_features, 'ret_1', window_size)
     df_features[['nu', 'mu', 'sigma']] = params_df
     df_features.loc[df_features['nu'] > 30, 'nu'] = 30    # cap heavy tails
     df_features['nu'] /= 30                                # normalise to [0, 1]
 
-    df_features.dropna(inplace=True)
+    # df_features.dropna(inplace=True)
     return df_features
