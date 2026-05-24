@@ -50,7 +50,10 @@ def fetch_asset_data(
     print(df.columns)
     df_final = df[['Close']].rename(columns={'Close': 'prices'})
     if 'volume' in features:
-        df_final['volume'] = df['Volume']
+        if df['Volume'].isna().sum() < len(df):
+            df['Volume'] = df['Volume'].ffill().bfill()
+            df_final['volume_ret'] = df['Volume'].pct_change().fillna(0)
+
     
     # Compute log-returns for the models
     df_final['returns'] = np.log(df_final['prices']).diff().dropna()

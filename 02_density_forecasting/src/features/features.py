@@ -132,11 +132,20 @@ def create_features(
     df_features['VIX'] = df_features['VIX'].shift()       # no look-ahead
 
     features_lags(df_features, n_lags)
+    df_features['ret_1_mean'] = df_features['ret_1'].rolling(window_size).mean()
+    df_features['ret_1_std'] = df_features['ret_1'].rolling(window_size).std()
+    df_features['ret_1_kurt'] = df_features['ret_1'].rolling(window_size).kurt()
+    df_features['ret_1_skew'] = df_features['ret_1'].rolling(window_size).skew()
 
-    params_df = rolling_t_fit(df_features, 'ret_1', window_size)
-    df_features[['nu', 'mu', 'sigma']] = params_df
-    df_features.loc[df_features['nu'] > 30, 'nu'] = 30    # cap heavy tails
-    df_features['nu'] /= 30                                # normalise to [0, 1]
+    if 'volume' in df.columns:
+        # df_features['volume'] = df['volume'].shift()  # no look-ahead
+        df_features['volume_var'] = np.log(df['volume'].shift()).diff() # no look-ahead
+
+    
+    # params_df = rolling_t_fit(df_features, 'ret_1', window_size)
+    # df_features[['nu', 'mu', 'sigma']] = params_df
+    # df_features.loc[df_features['nu'] > 30, 'nu'] = 30    # cap heavy tails
+    # df_features['nu'] /= 30                                # normalise to [0, 1]
 
     # df_features.dropna(inplace=True)
     return df_features

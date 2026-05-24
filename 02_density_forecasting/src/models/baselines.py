@@ -15,6 +15,7 @@ Available Models (ordered from simplest to most complex):
     - rolling_vix_scaled_student_t : Student-t with VIX-elasticity volatility scaling
 """
 
+
 import warnings
 
 import numpy as np
