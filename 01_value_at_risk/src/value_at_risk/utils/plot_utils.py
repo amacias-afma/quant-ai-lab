@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
-from src.evaluation.backtest_value_at_risk import backtest_var_models
+from value_at_risk.evaluation.backtest_value_at_risk import backtest_var_models
 
 def plot_var_comparison(df_results, alpha=0.05):
     """

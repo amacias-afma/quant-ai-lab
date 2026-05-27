@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "value_at_risk"
+version = "0.1.0"
+description = "Value at Risk model for Quant AI Lab"
+authors = [{ name = "AFMA Lab" }]
+dependencies = [
+    # Read from requirements.txt or add directly here
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

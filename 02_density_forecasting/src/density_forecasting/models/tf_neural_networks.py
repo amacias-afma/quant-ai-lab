@@ -44,19 +44,38 @@ class LinearStudentTNet(tf.keras.Model):
 
 
 class WideAndDeepStudentTNet(tf.keras.Model):
-    def __init__(self):
+    def __init__(self, prior_mu=0.0005, prior_sigma=0.018, prior_nu=4.5):
         super(WideAndDeepStudentTNet, self).__init__()
         
-        # --- THE DEEP PATH (Non-Linear) ---
-        self.hidden = tf.keras.layers.Dense(16, activation='swish')
+        # --- THE DEEP PATH (Starts completely asleep) ---
+        self.hidden = tf.keras.layers.Dense(16, activation='swish', 
+                                            kernel_regularizer=tf.keras.regularizers.l2(0.01))
+        self.dropout = tf.keras.layers.Dropout(0.5)
+
         self.mu_curve = tf.keras.layers.Dense(1, kernel_initializer='zeros')
         self.sigma_curve = tf.keras.layers.Dense(1, kernel_initializer='zeros')
         self.nu_curve = tf.keras.layers.Dense(1, activation='softplus', kernel_initializer='zeros')
 
         # --- THE WIDE PATH (Linear) ---
-        self.mu_linear = tf.keras.layers.Dense(1, kernel_initializer='zeros', bias_initializer='zeros')
-        self.sigma_linear = tf.keras.layers.Dense(1, kernel_initializer='zeros', bias_initializer=tf.keras.initializers.Constant(0.02))
-        self.nu_linear = tf.keras.layers.Dense(1, activation='softplus', kernel_initializer='zeros', bias_initializer=tf.keras.initializers.Constant(2.9))
+        self.mu_linear = tf.keras.layers.Dense(
+            1, 
+            kernel_initializer='zeros', 
+            bias_initializer=tf.keras.initializers.Constant(prior_mu)
+        )
+        # self.mu_linear = tf.keras.layers.Dense(1, kernel_initializer='zeros', bias_initializer='zeros')
+        self.sigma_linear = tf.keras.layers.Dense(
+            1, 
+            kernel_initializer='zeros', 
+            bias_initializer=tf.keras.initializers.Constant(prior_sigma)
+        )
+        # self.sigma_linear = tf.keras.layers.Dense(1, kernel_initializer='zeros', bias_initializer=tf.keras.initializers.Constant(0.02))
+        self.nu_linear = tf.keras.layers.Dense(
+            1, 
+            activation='softplus', 
+            kernel_initializer='zeros', 
+            bias_initializer=tf.keras.initializers.Constant(prior_nu - 2.1)
+        )
+        # self.nu_linear = tf.keras.layers.Dense(1, activation='softplus', kernel_initializer='zeros', bias_initializer=tf.keras.initializers.Constant(2.9))
 
     def call(self, inputs):
         # 1. UNPACK THE INPUTS!
@@ -126,6 +145,25 @@ def nll_loss_fn(mu_pred, sigma_pred, nu_pred, y_target):
     dist = tfd.StudentT(df=nu_pred, loc=mu_pred, scale=sigma_pred)
     return -tf.reduce_mean(dist.log_prob(y_target))
 
+# ==========================================
+# 2. THE PRIOR-GUIDED NLL LOSS FUNCTION
+# ==========================================
+def prior_guided_loss(mu_pred, sigma_pred, nu_pred, y_target, prior_data=None, lambda_reg=0.05):
+    # A. Standard Negative Log-Likelihood (The data-driven force)
+    dist = tfd.StudentT(df=nu_pred, loc=mu_pred, scale=sigma_pred)
+    nll_loss = -tf.reduce_mean(dist.log_prob(y_target))
+    
+    # B. The Prior Penalties (The regularizing force pushing back to the baseline)
+    # We use Mean Squared Error between the network's predictions and the parametric prior
+    if prior_data is not None:
+        mu_penalty = tf.reduce_mean(tf.square(mu_pred - prior_data['mu']))
+        sigma_penalty = tf.reduce_mean(tf.square(sigma_pred - prior_data['sigma']))
+        nu_penalty = tf.reduce_mean(tf.square(nu_pred - prior_data['nu']))
+        # Total combined loss
+        total_loss = nll_loss + lambda_reg * (mu_penalty + sigma_penalty + nu_penalty)
+    else:
+        total_loss = nll_loss
+    return total_loss
 
 def train_expanding_window_model(df_X_linear, df_y, df_X_deep=None, model_class='Linear', epochs=500, test_window=22, porcentage_train=0.6, lr=0.015):
     """

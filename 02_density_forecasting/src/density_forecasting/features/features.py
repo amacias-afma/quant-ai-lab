@@ -126,26 +126,42 @@ def create_features(
         pd.DataFrame with all features and the 'returns' target column.
         Rows containing any NaN (warm-up period) are dropped.
     """
+    df['returns'] = np.log(df['prices']).diff()
     df_features = 100 * df[['returns']].copy()
+    df_features['returns_m1'] = df_features['returns'].shift()
+
+    if 'volume' in df.columns:
+        df_features['volume'] = df['volume'].replace(0, np.nan).ffill().bfill().shift()
+        
+        # Deep Features
+        df_features['Vol_50_MA'] = df_features['volume'].rolling(window=50).mean()
+        df_features['Feat_Volume_Shock'] = df_features['volume'] / df_features['Vol_50_MA']
+
+    df_features['Feat_Momentum_20'] = df_features['returns_m1'].rolling(window=20).mean()
+    df_features['Feat_Realized_Vol_20'] = df_features['returns_m1'].rolling(window=20).std()
+
+    # RSI
+    delta = df['prices'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    df_features['Feat_RSI_14'] = 100 - (100 / (1 + (gain / loss)))
+
+    df_features['returns_m1_mean'] = df_features['returns_m1'].rolling(window_size).mean()
+    df_features['returns_m1_std'] = df_features['returns_m1'].rolling(window_size).std()
+    df_features['returns_m1_kurt'] = df_features['returns_m1'].rolling(window_size).kurt()
+    df_features['returns_m1_skew'] = df_features['returns_m1'].rolling(window_size).skew()
+
+    df_features['returns_m1_mean_st'] = df_features['returns_m1'].rolling(11).mean()
+    df_features['returns_m1_std_st'] = df_features['returns_m1'].rolling(11).std()
+
+    df_features['returns_m1_nu'] = 4 + (6 / df_features['returns_m1_kurt'])
+    df_features.loc[df_features['returns_m1_nu'] > 30, 'returns_m1_nu'] = 30
+    df_features.loc[df_features['returns_m1_nu'] < 2, 'returns_m1_nu'] = 2
+
     df_features = pd.concat([df_features, df_vix], axis=1)
     df_features.ffill(inplace=True)
     df_features['VIX'] = df_features['VIX'].shift()       # no look-ahead
 
-    features_lags(df_features, n_lags)
-    df_features['ret_1_mean'] = df_features['ret_1'].rolling(window_size).mean()
-    df_features['ret_1_std'] = df_features['ret_1'].rolling(window_size).std()
-    df_features['ret_1_kurt'] = df_features['ret_1'].rolling(window_size).kurt()
-    df_features['ret_1_skew'] = df_features['ret_1'].rolling(window_size).skew()
+    df_features['vix_ratio'] = df_features['VIX'] / df_features['VIX'].rolling(window_size).mean()
 
-    if 'volume' in df.columns:
-        # df_features['volume'] = df['volume'].shift()  # no look-ahead
-        df_features['volume_var'] = np.log(df['volume'].shift()).diff() # no look-ahead
-
-    
-    # params_df = rolling_t_fit(df_features, 'ret_1', window_size)
-    # df_features[['nu', 'mu', 'sigma']] = params_df
-    # df_features.loc[df_features['nu'] > 30, 'nu'] = 30    # cap heavy tails
-    # df_features['nu'] /= 30                                # normalise to [0, 1]
-
-    # df_features.dropna(inplace=True)
     return df_features

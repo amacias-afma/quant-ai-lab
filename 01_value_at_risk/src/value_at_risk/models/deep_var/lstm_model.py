@@ -6,7 +6,7 @@ import torch.optim as optim
 import pandas as pd
 import numpy as np
 import random
-from src.models.deep_var.parametric_model import priori_value_at_risk
+from value_at_risk.models.deep_var.parametric_model import priori_value_at_risk
 
 def set_seed(seed=42):
     """Sets the seed for reproducibility."""

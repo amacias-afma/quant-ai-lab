@@ -47,18 +47,25 @@ def fetch_asset_data(
 
     df = yf.download(ticker, start=resolved_start, end=resolved_end, progress=False)
     df.columns = df.columns.get_level_values(0)  # flatten MultiIndex if present
-    print(df.columns)
     df_final = df[['Close']].rename(columns={'Close': 'prices'})
+
     if 'volume' in features:
-        if df['Volume'].isna().sum() < len(df):
-            df['Volume'] = df['Volume'].ffill().bfill()
-            df_final['volume_ret'] = df['Volume'].pct_change().fillna(0)
+        df_final['volume'] = df['Volume']
+    
+    # print(df.columns)
+    # df_final = df[['Close']].rename(columns={'Close': 'prices'})
+    # if 'volume' in features:
+    #     df['Volume'] = df['Volume'].replace(0, np.nan)
+    #     df['Volume'] = df['Volume'].ffill().bfill()
+    #     df_final['volume_ret'] = df['Volume'].pct_change().fillna(0)
+        
+        
 
     
-    # Compute log-returns for the models
-    df_final['returns'] = np.log(df_final['prices']).diff().dropna()
+    # # Compute log-returns for the models
+    # df_final['returns'] = np.log(df_final['prices']).diff().dropna()
 
-    if 'std' in features:
-        df_final['std'] = df_final['returns'].rolling(90).std()
+    # if 'std' in features:
+    #     df_final['std'] = df_final['returns'].rolling(90).std()
     
     return df_final

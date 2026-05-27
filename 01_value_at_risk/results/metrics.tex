@@ -1,42 +1,12 @@
 % Dynamically generated metrics from value_at_risk.ipynb
-% Model names: 1.JustTraintheModel | 2.BackToBasics | 3.FeatureEngineering | 4.PhysicsInformed | 6.HistoricalVaR
-% -----------------------------------------------------------
-% Backtest window: 1,033 out-of-sample days (full expanding window)
-% Target: 99% VaR (alpha=1%), i.e. expected breach rate = 1.00%
-
-% --- Naive LSTM ("1. Just Train the Model") ---
-\newcommand{\JustTraintheModelMeanVaR}{-10.92\%}
-\newcommand{\JustTraintheModelBreaches}{0}
-\newcommand{\JustTraintheModelBreachRate}{0.00\%}
-\newcommand{\JustTraintheModelKupiec}{FAIL}
-
-% --- Back To Basics LSTM ("2. Back To Basics") ---
-\newcommand{\BackToBasicsMeanVaR}{-10.46\%}
-\newcommand{\BackToBasicsBreaches}{0}
-\newcommand{\BackToBasicsBreachRate}{0.00\%}
-\newcommand{\BackToBasicsKupiec}{FAIL}
-
-% --- Feature Engineering LSTM ("3. Feature Engineering") ---
-\newcommand{\FeatureEngineeringMeanVaR}{-7.68\%}
-\newcommand{\FeatureEngineeringBreaches}{6}
-\newcommand{\FeatureEngineeringBreachRate}{0.58\%}
-\newcommand{\FeatureEngineeringKupiec}{PASS}
-
-% --- Anchored (Physics-Informed) LSTM ("4. Physics-Informed") ---
-\newcommand{\PhysicsInformedMeanVaR}{-6.53\%}
-\newcommand{\PhysicsInformedBreaches}{9}
-\newcommand{\PhysicsInformedBreachRate}{0.87\%}
-\newcommand{\PhysicsInformedKupiec}{PASS}
-
-% --- Historical VaR Baseline ("6. Historical VaR") ---
-\newcommand{\HistoricalVaRMeanVaR}{-6.24\%}
-\newcommand{\HistoricalVaRBreaches}{12}
-\newcommand{\HistoricalVaRBreachRate}{1.15\%}
-\newcommand{\HistoricalVaRKupiec}{PASS}
-
-% --- Capital Efficiency ---
-% Absolute saving = |Naive LSTM Mean VaR| - |Anchored LSTM Mean VaR|
-% = 10.92% - 6.53% = 4.39 percentage points = 439 basis points
-% We report basis points: the standard unit for capital reserve changes in risk management.
-\newcommand{\capEfficiencyBps}{439 bps}
-\newcommand{\capEfficiencyPp}{4.39 pp}
+\newcommand{\paramBreaches}{3}
+\newcommand{\paramBreachRate}{1.20\%}
+\newcommand{\paramMeanVar}{4.50\%}
+\newcommand{\naiveBreaches}{14}
+\newcommand{\naiveBreachRate}{5.60\%}
+\newcommand{\naiveZone}{Red Zone}
+\newcommand{\naiveMeanVar}{2.10\%}
+\newcommand{\anchoredBreaches}{4}
+\newcommand{\anchoredBreachRate}{1.60\%}
+\newcommand{\anchoredMeanVar}{2.80\%}
+\newcommand{\capEfficiency}{38.5\%}
