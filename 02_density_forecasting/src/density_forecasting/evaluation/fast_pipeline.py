@@ -166,15 +166,22 @@ def initializate_nn_model(columns_linear, model_class, lr, columns_deep=[]):
                 mu, sigma, nu = model((X_lin_batch, X_deep_batch))
             else:
                 mu, sigma, nu = model(X_lin_batch)
-            # loss = nll_loss_fn(mu, sigma, nu, y_batch)
-            # prior_data = {}
-            loss = prior_guided_loss(mu, sigma, nu, y_batch, prior_data, lambda_reg=0.5)
+            loss = prior_guided_loss(mu, sigma, nu, y_batch, prior_data, lambda_reg=0.1)
 
         gradients = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
         return loss
 
-    return train_step, model
+    @tf.function
+    def val_step(X_lin_batch, y_batch, prior_data=None, X_deep_batch=None):
+        if X_deep_batch is not None:
+            mu, sigma, nu = model((X_lin_batch, X_deep_batch))
+        else:
+            mu, sigma, nu = model(X_lin_batch)
+        loss = prior_guided_loss(mu, sigma, nu, y_batch, prior_data, lambda_reg=0.1)
+        return loss
+
+    return train_step, val_step, model
 
 def backtesting_neural_networks(X_linear_test, X_deep_test, y_test, model):
     if X_deep_test is not None:
@@ -196,26 +203,64 @@ def backtesting_neural_networks(X_linear_test, X_deep_test, y_test, model):
         'nu': pred_nu_flat
     }
 
-def run_neural_networks(df_X_linear_train, df_X_deep_train, df_y_train, current_epochs, train_step, prior_data, verbose=False):
+def run_neural_networks(
+    df_X_linear_train, df_X_deep_train, df_y_train, 
+    df_X_linear_val, df_X_deep_val, df_y_val, 
+    current_epochs, train_step, val_step, model, 
+    prior_data_train,
+    prior_data_v, 
+    verbose=False
+):
     X_linear_train = tf.convert_to_tensor(df_X_linear_train.to_numpy(), dtype=tf.float32)
     X_deep_train = tf.convert_to_tensor(df_X_deep_train.to_numpy(), dtype=tf.float32) if df_X_deep_train is not None else None
     y_train = tf.convert_to_tensor(df_y_train.to_numpy(), dtype=tf.float32)
+
+    X_linear_val = tf.convert_to_tensor(df_X_linear_val.to_numpy(), dtype=tf.float32)
+    X_deep_val = tf.convert_to_tensor(df_X_deep_val.to_numpy(), dtype=tf.float32) if df_X_deep_val is not None else None
+    y_val = tf.convert_to_tensor(df_y_val.to_numpy(), dtype=tf.float32)
     
-    if prior_data is not None:
-        prior_data_tensors = {k: tf.convert_to_tensor(v, dtype=tf.float32) for k, v in prior_data.items()}
+    if prior_data_train is not None:
+        prior_data_train_tensors = {k: tf.convert_to_tensor(v, dtype=tf.float32) for k, v in prior_data_train.items()}
     else:
-        prior_data_tensors = None
+        prior_data_train_tensors = None
+    if prior_data_v is not None:
+        prior_data_v_tensors = {k: tf.convert_to_tensor(v, dtype=tf.float32) for k, v in prior_data_v.items()}
+    else:
+        prior_data_v = None
+    # print(prior_data_train_tensors)
+    # print(f'prior_data_train_tensors {prior_data_train_tensors}')
+    # print(f'prior_data_v_tensors {prior_data_v_tensors}')
+    best_val_loss = np.inf
+    best_weights = model.get_weights()
+    patience_counter = 0
+    patience = 20
     
-    max_loss = np.inf
+    val_loss_history = []
+    
     for epoch in range(current_epochs):
         
-        # def train_step(X_lin_batch, y_batch, prior_data=None, X_deep_batch=None):
-        loss = train_step(X_linear_train, y_train, prior_data_tensors, X_deep_train)
+        train_loss = train_step(X_linear_train, y_train, prior_data_train_tensors, X_deep_train)
+        val_loss = val_step(X_linear_val, y_val, prior_data_v_tensors, X_deep_val).numpy()
+        val_loss_history.append(val_loss)
         
-        if np.abs(loss/max_loss - 1) < 0.001:
-            break
+        if val_loss < best_val_loss * 0.999:
+            best_val_loss = val_loss
+            best_weights = model.get_weights()
+            patience_counter = 0
         else:
-            max_loss = loss
+            patience_counter += 1
+            
+        if patience_counter >= patience:
+            if verbose:
+                print(f"Early stopping at epoch {epoch}. Restoring best weights.")
+            break
+
         if verbose and (epoch % 50 == 0 or epoch == current_epochs - 1):
-            print(f"Epoch {epoch:03d} | NLL Loss: {loss.numpy():.4f}")
-    print(f'Last epoch: {epoch}, Loss: {loss.numpy():.4f}')
+            print(f"Epoch {epoch:03d} | Train Loss: {train_loss.numpy():.4f} | Val Loss: {val_loss:.4f}")
+            
+    # Restore the best weights
+    model.set_weights(best_weights)
+    if verbose:
+        print(f'Training finished. Best Val Loss: {best_val_loss:.4f}')
+        
+    return val_loss_history

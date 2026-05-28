@@ -156,9 +156,9 @@ def prior_guided_loss(mu_pred, sigma_pred, nu_pred, y_target, prior_data=None, l
     # B. The Prior Penalties (The regularizing force pushing back to the baseline)
     # We use Mean Squared Error between the network's predictions and the parametric prior
     if prior_data is not None:
-        mu_penalty = tf.reduce_mean(tf.square(mu_pred - prior_data['mu']))
-        sigma_penalty = tf.reduce_mean(tf.square(sigma_pred - prior_data['sigma']))
-        nu_penalty = tf.reduce_mean(tf.square(nu_pred - prior_data['nu']))
+        mu_penalty = tf.reduce_mean(tf.square(tf.reshape(mu_pred, [-1]) - tf.reshape(prior_data['mu'], [-1])))
+        sigma_penalty = tf.reduce_mean(tf.square(tf.reshape(sigma_pred, [-1]) - tf.reshape(prior_data['sigma'], [-1])))
+        nu_penalty = tf.reduce_mean(tf.square(tf.reshape(nu_pred, [-1]) - tf.reshape(prior_data['nu'], [-1])))
         # Total combined loss
         total_loss = nll_loss + lambda_reg * (mu_penalty + sigma_penalty + nu_penalty)
     else:

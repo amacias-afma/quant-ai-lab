@@ -470,3 +470,48 @@ def calculate_fail_rate(
     df_results         = block_ks_test(df_evaluation['PIT'], block_size=block_size)
     df_results['Fail'] = (df_results['P_Value'] < alpha).astype(int)
     return df_results['Fail'].sum() / len(df_results)
+
+def kupiec_pof_test(actuals: np.ndarray, var_forecasts: np.ndarray, confidence_level: float = 0.95) -> dict:
+    """
+    Kupiec Proportion of Failures (POF) test for VaR calibration.
+    
+    Tests whether the empirical number of VaR exceedances matches the 
+    expected number based on the confidence level.
+
+    Args:
+        actuals: Realized returns. Shape: (T,)
+        var_forecasts: Value at Risk (VaR) forecasts at `confidence_level`. Shape: (T,)
+        confidence_level: VaR confidence level (e.g., 0.95 for 5% VaR, 0.99 for 1% VaR).
+
+    Returns:
+        dict containing the test statistics and result.
+    """
+    from scipy.stats import chi2
+    
+    p = 1.0 - confidence_level
+    N = len(actuals)
+    # Number of exceptions (returns strictly less than VaR)
+    exceptions = np.sum(actuals < var_forecasts)
+    
+    p_hat = exceptions / N
+    
+    if exceptions == 0:
+        lr = -2 * np.log((1 - p)**N)
+    elif exceptions == N:
+        lr = -2 * np.log(p**N)
+    else:
+        # LR = -2 * ln( ( (1-p)^(N-x) * p^x ) / ( (1-p_hat)^(N-x) * p_hat^x ) )
+        num = (N - exceptions) * np.log(1 - p) + exceptions * np.log(p)
+        den = (N - exceptions) * np.log(1 - p_hat) + exceptions * np.log(p_hat)
+        lr = -2 * (num - den)
+        
+    p_value = 1.0 - chi2.cdf(lr, df=1)
+    
+    return {
+        'Exceptions': exceptions,
+        'Expected': N * p,
+        'Failure_Rate': p_hat,
+        'LR_Statistic': lr,
+        'P_Value': p_value,
+        'Status': '✅ PASSED' if p_value >= 0.05 else '❌ FAILED'
+    }
