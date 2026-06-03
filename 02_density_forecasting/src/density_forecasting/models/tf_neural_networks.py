@@ -163,7 +163,7 @@ def prior_guided_loss(mu_pred, sigma_pred, nu_pred, y_target, prior_data=None, l
         total_loss = nll_loss + lambda_reg * (mu_penalty + sigma_penalty + nu_penalty)
     else:
         total_loss = nll_loss
-    return total_loss
+    return total_loss, nll_loss
 
 def train_expanding_window_model(df_X_linear, df_y, df_X_deep=None, model_class='Linear', epochs=500, test_window=22, porcentage_train=0.6, lr=0.015):
     """
@@ -296,3 +296,89 @@ def train_expanding_window_model(df_X_linear, df_y, df_X_deep=None, model_class=
     pit_values_test_total = np.concatenate(pit_values_list) if pit_values_list else np.array([])
     
     return dates_test_total, pred_mu_test_total, pred_sigma_test_total, pred_nu_test_total, pit_values_test_total
+
+
+def create_cnn_sequences(X_lin, X_deep, y, lookback=20):
+    """
+    Converts flat time-series data into 3D overlapping windows for the CNN,
+    while keeping the linear path perfectly aligned in 2D.
+    """
+    X_lin_seq = []
+    X_deep_seq = []
+    y_seq = []
+    
+    # Slide a window of size 'lookback' across the dataset
+    for i in range(len(X_deep) - lookback):
+        # Linear path just gets the current day's features
+        X_lin_seq.append(X_lin.iloc[i + lookback])
+        
+        # CNN path gets the entire block of the last 'lookback' days
+        X_deep_seq.append(X_deep.iloc[i : i + lookback].values)
+        
+        # Target is the return on the current day
+        y_seq.append(float(y.iloc[i + lookback]))
+        
+    return np.array(X_lin_seq), np.array(X_deep_seq), np.array(y_seq)
+
+# Example usage in your pipeline:
+# lookback_days = 20
+# X_lin_tr_3d, X_deep_tr_3d, y_tr_3d = create_cnn_sequences(df_train[columns_linear], df_train[columns_deep], df_train['returns'], lookback_days)
+
+
+class ConvWideAndDeepNet(tf.keras.Model):
+    def __init__(self, prior_mu=0.0005, prior_sigma=0.018, prior_nu=4.5):
+        super(ConvWideAndDeepNet, self).__init__()
+        
+        # ==========================================
+        # THE DEEP CNN PATH (Replaces Dense Layers)
+        # ==========================================
+        # 16 filters sliding across 5 days at a time. 
+        self.conv1 = tf.keras.layers.Conv1D(
+            filters=16, 
+            kernel_size=5, 
+            activation='swish',
+            padding='valid'
+        )
+        
+        # Max Pooling downsamples the timeline, keeping only the strongest signals (like the biggest VIX spike)
+        self.pool = tf.keras.layers.MaxPooling1D(pool_size=2)
+        self.flatten = tf.keras.layers.Flatten()
+        
+        # Optional dense bottleneck to combine the CNN features with L2 regularization
+        self.dense_features = tf.keras.layers.Dense(8, activation='swish', kernel_regularizer=tf.keras.regularizers.l2(0.01))
+        self.dropout = tf.keras.layers.Dropout(0.5)
+        
+        self.mu_curve = tf.keras.layers.Dense(1, kernel_initializer='zeros', bias_initializer='zeros')
+        self.sigma_curve = tf.keras.layers.Dense(1, kernel_initializer='zeros', bias_initializer='zeros')
+        self.nu_curve = tf.keras.layers.Dense(1, kernel_initializer='zeros', bias_initializer='zeros')
+
+        # ==========================================
+        # THE WIDE LINEAR PATH (Unchanged 2D routing)
+        # ==========================================
+        self.mu_linear = tf.keras.layers.Dense(1, kernel_initializer='zeros', bias_initializer=tf.keras.initializers.Constant(prior_mu))
+        self.sigma_linear = tf.keras.layers.Dense(1, kernel_initializer='zeros', bias_initializer=tf.keras.initializers.Constant(prior_sigma))
+        self.nu_linear = tf.keras.layers.Dense(1, kernel_initializer='zeros', bias_initializer=tf.keras.initializers.Constant(prior_nu - 2.1))
+
+    def call(self, inputs, training=False):
+        # X_deep is now a 3D tensor: (Batch, Lookback, Features)
+        X_linear, X_deep_3d = inputs
+        
+        # Pass 3D data through the CNN
+        c = self.conv1(X_deep_3d)
+        c = self.pool(c)
+        c = self.flatten(c)
+        
+        # Pass through bottleneck and dropout
+        c = self.dense_features(c)
+        h = self.dropout(c, training=training)
+        
+        # Add Wide (Linear) and Deep (CNN) outputs
+        raw_mu = self.mu_linear(X_linear) + self.mu_curve(h)
+        raw_sigma = self.sigma_linear(X_linear) + self.sigma_curve(h)
+        raw_nu = self.nu_linear(X_linear) + self.nu_curve(h)
+        
+        # Apply strict probabilistic boundaries
+        sigma = tf.nn.relu(raw_sigma) + 1e-6
+        nu = tf.nn.relu(raw_nu) + 2.1
+        
+        return raw_mu, sigma, nu

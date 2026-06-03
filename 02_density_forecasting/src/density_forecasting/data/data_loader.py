@@ -1,6 +1,5 @@
 from datetime import date, timedelta
 import pandas as pd
-import numpy as np
 
 import yfinance as yf
 
@@ -69,3 +68,33 @@ def fetch_asset_data(
     #     df_final['std'] = df_final['returns'].rolling(90).std()
     
     return df_final
+
+
+
+def fetch_macro_features(start_date, end_date):
+    # Download the external macro tickers
+    macro_tickers = ['^TNX', 'DX-Y.NYB', 'HYG', 'HG=F']
+    macro_df = yf.download(macro_tickers, start=start_date, end=end_date)['Close']
+    
+    # Forward fill any missing days (due to different market holidays)
+    macro_df = macro_df.ffill().dropna()
+    
+    # 1. Rate Shock (TNX)
+    macro_df['TNX_20_MA'] = macro_df['^TNX'].rolling(20).mean()
+    macro_df['Macro_Rate_Shock'] = macro_df['^TNX'] / macro_df['TNX_20_MA']
+    
+    # 2. Dollar Momentum
+    macro_df['DXY_10_MA'] = macro_df['DX-Y.NYB'].rolling(10).mean()
+    macro_df['DXY_50_MA'] = macro_df['DX-Y.NYB'].rolling(50).mean()
+    macro_df['Macro_USD_Trend'] = macro_df['DXY_10_MA'] / macro_df['DXY_50_MA']
+    
+    # 3. Credit Stress
+    macro_df['Macro_Credit_Stress'] = macro_df['HYG'].pct_change(5)
+    
+    return macro_df[['Macro_Rate_Shock', 'Macro_USD_Trend', 'Macro_Credit_Stress']].dropna()
+
+# In your main script:
+# 1. Fetch macro data once
+# macro_features = fetch_macro_features(start_date, end_date)
+# 2. Merge it with your specific ticker's dataframe using the Date index
+# df_features = df_features.join(macro_features, how='left').ffill().dropna()

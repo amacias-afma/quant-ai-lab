@@ -126,9 +126,18 @@ def create_features(
         pd.DataFrame with all features and the 'returns' target column.
         Rows containing any NaN (warm-up period) are dropped.
     """
-    df['returns'] = np.log(df['prices']).diff()
-    df_features = 100 * df[['returns']].copy()
-    df_features['returns_m1'] = df_features['returns'].shift()
+
+    df_features = df.copy()
+    df_features['returns'] = 100 * np.log(df_features['prices']).diff()
+    # df_features = 100 * df[['returns']].copy()
+    # df_features =
+    df_features['returns_m1'] = df_features['returns'].shift(1)
+    df_features['returns_m2'] = df_features['returns'].shift(2)
+    df_features['returns_m3'] = df_features['returns'].shift(3)
+
+    df_features['returns_m1_2'] = df_features['returns_m1']**2
+    df_features['returns_m2_2'] = df_features['returns_m2']**2
+    df_features['returns_m3_2'] = df_features['returns_m3']**2
 
     if 'volume' in df.columns:
         df_features['volume'] = df['volume'].replace(0, np.nan).ffill().bfill().shift()
@@ -163,5 +172,6 @@ def create_features(
     df_features['VIX'] = df_features['VIX'].shift()       # no look-ahead
 
     df_features['vix_ratio'] = df_features['VIX'] / df_features['VIX'].rolling(window_size).mean()
+
 
     return df_features
