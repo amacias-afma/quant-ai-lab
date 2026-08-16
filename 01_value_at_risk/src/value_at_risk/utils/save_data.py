@@ -14,15 +14,15 @@ def save_comparison_plot(df, model_1, model_2):
     # Plot Realized
     ax.plot(df.index, df['realized'], color='grey', alpha=0.3, linewidth=1, label='Realized Returns')
     
-    # Plot Naive (Failure)
+    # Plot the unanchored model (the ablation)
     if model_1 in df.columns:
-        ax.plot(df.index, df[model_1], 
-                color='firebrick', linestyle='--', linewidth=2, alpha=0.8, label='Naive AI')
+        ax.plot(df.index, df[model_1],
+                color='firebrick', linestyle='--', linewidth=2, alpha=0.8, label=model_1)
 
-    # Plot Hybrid (Success)
+    # Plot the anchored model
     if model_2 in df.columns:
-        ax.plot(df.index, df[model_2], 
-                color='forestgreen', linewidth=2.5, label='Physics-Informed AI')
+        ax.plot(df.index, df[model_2],
+                color='forestgreen', linewidth=2.5, label=model_2)
 
     # Styling
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
@@ -42,15 +42,8 @@ def save_comparison_plot(df, model_1, model_2):
 
 # --- B. Save the Summary Table as an Image ---
 def save_table_image(df_table):
-    # # Re-creating the data from your latest results
-    # data = {
-    #     "Model": ["1. Just Train (Naive)", "2. Back to Basics", "3. Feature Eng.", "4. Physics-Informed (Hybrid)", "6. Historical VaR"],
-    #     "Breach Rate": ["0.14%", "0.14%", "0.57%", "1.14%", "1.57%"],
-    #     "Capital Reserved": ["-10.32%", "-10.39%", "-7.11%", "-6.49%", "-6.22%"],
-    #     "Responsiveness": ["0.0082", "0.0030", "0.0185", "0.0101", "0.0054"],
-    #     "Status": ["❌ FAIL", "❌ FAIL", "✅ PASS", "✅ WINNER", "✅ PASS"]
-    # }
-    # df_table = pd.DataFrame(data)
+    # NOTE: results tables are built from outputs/*.csv by the evaluation pipeline —
+    # never hard-coded here. See evaluation/report.py.
 
     # Render as plot
     fig, ax = plt.subplots(figsize=(10, 4)) 

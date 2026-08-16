@@ -14,10 +14,17 @@ def clean_data(df, z_score_threshold=4):
         print(f"Found {df_clean.isnull().sum().sum()} NaNs. Forward filling...")
         df_clean.ffill(inplace=True)
     
-    # 2. Outlier Detection (Simple Z-Score on diffs)
-    # We look for unrealistic jumps in price
+    # 2. Outlier Detection (Expanding Z-Score on diffs to avoid data leakage)
+    # We look for unrealistic jumps in price using ONLY historical information
     price_diff = df_clean['price'].diff()
-    z_scores = np.abs(stats.zscore(price_diff.dropna()))
+    
+    # Calculate expanding mean and standard deviation
+    expanding_mean = price_diff.expanding(min_periods=5).mean()
+    expanding_std = price_diff.expanding(min_periods=5).std()
+    
+    # Calculate z-scores using only historical data up to that point
+    # Fill NA with 0 to prevent issues with the first few rows
+    z_scores = np.abs((price_diff - expanding_mean) / expanding_std).fillna(0)
     
     # Align Z-scores to original index
     outliers = z_scores > z_score_threshold

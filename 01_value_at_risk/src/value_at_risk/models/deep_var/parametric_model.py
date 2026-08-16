@@ -38,7 +38,7 @@ def priori_value_at_risk(df, rolling=132, alpha=0.05):
     
     df_value_at_risk[f'std_{rolling}d'] = df_value_at_risk['log_ret'].rolling(rolling).std()
     df_value_at_risk[f'mean_{rolling}d'] = df_value_at_risk['log_ret'].rolling(rolling).mean()
-    df_value_at_risk[f'value_at_risk_hist'] = df_value_at_risk['log_ret'].rolling(rolling).quantile(alpha)
+    df_value_at_risk[f'value_at_risk_hist'] = df_value_at_risk['log_ret'].rolling(252).quantile(alpha)
     df_value_at_risk[f'value_at_risk_param'] = df_value_at_risk[f'mean_{rolling}d'] - z0 * df_value_at_risk[f'std_{rolling}d']
     
     return df_value_at_risk

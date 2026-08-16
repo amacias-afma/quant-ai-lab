@@ -1,0 +1,53 @@
+{
+    "BTC-USD": {
+        "1. Just Train the Model": {
+            "Breach Rate (%)": "0.00%",
+            "Kupiec p-value": "0.0001",
+            "Avg Capital Reserved": "-31.18%",
+            "Responsiveness (Std)": "0.0020",
+            "Status": "\u274c FAIL"
+        },
+        "2. Back To Basics": {
+            "Breach Rate (%)": "62.40%",
+            "Kupiec p-value": "0.0000",
+            "Avg Capital Reserved": "0.83%",
+            "Responsiveness (Std)": "0.0160",
+            "Status": "\u274c FAIL"
+        },
+        "3. Feature Engineering": {
+            "Breach Rate (%)": "59.33%",
+            "Kupiec p-value": "0.0000",
+            "Avg Capital Reserved": "0.04%",
+            "Responsiveness (Std)": "0.0281",
+            "Status": "\u274c FAIL"
+        },
+        "3.2. Walk-Forward Validation": {
+            "Breach Rate (%)": "4.13%",
+            "Kupiec p-value": "0.0000",
+            "Avg Capital Reserved": "-6.18%",
+            "Responsiveness (Std)": "0.0351",
+            "Status": "\u274c FAIL"
+        },
+        "4. Physics-Informed": {
+            "Breach Rate (%)": "6.54%",
+            "Kupiec p-value": "0.0000",
+            "Avg Capital Reserved": "-4.86%",
+            "Responsiveness (Std)": "0.0239",
+            "Status": "\u274c FAIL"
+        },
+        "6. Historical VaR": {
+            "Breach Rate (%)": "1.15%",
+            "Kupiec p-value": "0.5341",
+            "Avg Capital Reserved": "-6.24%",
+            "Responsiveness (Std)": "0.0109",
+            "Status": "\u2705 PASS"
+        },
+        "7. GARCH(1,1)": {
+            "Breach Rate (%)": "0.77%",
+            "Kupiec p-value": "0.6375",
+            "Avg Capital Reserved": "-6.39%",
+            "Responsiveness (Std)": "0.0142",
+            "Status": "\u2705 PASS"
+        }
+    }
+}

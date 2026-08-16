@@ -1,0 +1,59 @@
+--- Cell 25 ---
+def calculate_metrics(df, alpha=0.01):
+    """
+    Generates a comparative table of VaR models including Christoffersen.
+    """
+    metrics = []
+    model_cols = [c for c in df.columns if c not in ['realized', 'date']]
+    for col in model_cols:
+        breaches = df[df['realized'] < df[col]]
+        n_breaches = len(breaches)
+        n_total = len(df)
+        breach_rate = n_breaches / n_total
+        
+        try:
+            kupiec_p = stats.binomtest(n_breaches, n_total, alpha, alternative='two-sided').pvalue
+        except AttributeError:
+            kupiec_p = 0.0
+            
+        b_series = (df['realized'] < df[col]).astype(int)
+        n00 = n01 = n10 = n11 = 0
+        for i in range(len(b_series) - 1):
+            if b_series.iloc[i] == 0 and b_series.iloc[i+1] == 0: n00 += 1
+            elif b_series.iloc[i] == 0 and b_series.iloc[i+1] == 1: n01 += 1
+            elif b_series.iloc[i] == 1 and b_series.iloc[i+1] == 0: n10 += 1
+            elif b_series.iloc[i] == 1 and b_series.iloc[i+1] == 1: n11 += 1
+            
+        p01 = n01 / (n00 + n01) if (n00 + n01) > 0 else 0
+        p11 = n11 / (n10 + n11) if (n10 + n11) > 0 else 0
+        p = (n01 + n11) / (n00 + n01 + n10 + n11) if (n00 + n01 + n10 + n11) > 0 else 0
+        
+        if p01 == 0 or p01 == 1 or p11 == 0 or p11 == 1 or p == 0 or p == 1:
+            ind_stat = np.inf if p01 != p11 else 0
+        else:
+            ind_stat = -2 * (np.log((1-p)**(n00+n10) * p**(n01+n11)) - np.log((1-p01)**n00 * p01**n01 * (1-p11)**n10 * p11**n11))
+        
+        ind_pvalue = 1 - stats.chi2.cdf(ind_stat, df=1) if ind_stat != np.inf else 0.0
+        
+        avg_var = df[col].mean()
+        max_var = df[col].min()
+        min_var = df[col].max()
+        responsiveness = df[col].std()
+        
+        metrics.append({
+            'Model': col,
+            'Breach Rate (%)': f"{breach_rate*100:.2f}%",
+            'Kupiec p-value': f"{kupiec_p:.4f}",
+            'Christoff p-value': f"{ind_pvalue:.4f}",
+            'Avg Capital Reserved': f"{avg_var*100:.2f}%",
+            'Max Capital Reserved': f"{max_var*100:.2f}%",
+            'Min Capital Reserved': f"{min_var*100:.2f}%",
+            'Responsiveness (Std)': f"{responsiveness:.4f}",
+            'Status': "✅ PASS" if kupiec_p > 0.05 and ind_pvalue > 0.05 and abs(breach_rate - alpha) < 0.01 else "❌ FAIL"
+        })
+    return pd.DataFrame(metrics).set_index('Model')
+
+summary_table = calculate_metrics(df_results.dropna())
+print("\n=== 🏆 FINAL MODEL SHOWDOWN ===")
+display(summary_table)
+

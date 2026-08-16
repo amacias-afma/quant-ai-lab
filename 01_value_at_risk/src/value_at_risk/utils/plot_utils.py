@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
+from scipy import stats
+import os
 from value_at_risk.evaluation.backtest_value_at_risk import backtest_var_models
 
 def plot_var_comparison(df_results, alpha=0.05):
@@ -196,58 +198,122 @@ def improved_price_plot(df, ticker_name, column='price'):
             fontsize=9, verticalalignment='top',
             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
-def plot_var_results(df_results, models=None, file_name=None):
+def plot_var_results(df_results, models=None, file_name=None, show=True):
         # Reset the index to get clean datetime values
         df_plot = df_results.copy()
-        df_plot.loc[df_plot['realized'] > 0, 'realized'] = np.nan
-
+        
+        # Clean up index if it's a multi-index or contains tuples
         df_plot.index = pd.to_datetime([idx[0] if isinstance(idx, tuple) else idx for idx in df_plot.index])
-
-        # Create figure and axis
-        fig, ax = plt.subplots(figsize=(14, 6))
-
-        colors = ['blue', 'purple', 'green', 'red', 'orange', 'cyan', 'magenta', 'yellow', 'black', 'gray']
         
         if models is None:
-            models = ['predicted']
+            # Default to all columns that are not 'realized' or 'date'
+            models = [col for col in df_plot.columns if col not in ['realized', 'date']]
+        elif isinstance(models, set):
+            models = list(models)
+            
+        # Sort models so the order is deterministic
+        models = sorted(models)
+        num_models = len(models)
         
-        breaches = df_plot['realized'] != df_plot['realized']
-
+        # Create subplots: 2 columns if 4 or more models, otherwise 1 column
+        import math
+        cols = 2 if num_models >= 4 else 1
+        rows = math.ceil(num_models / cols)
+        
+        fig, axes = plt.subplots(rows, cols, figsize=(16, 5 * rows), sharex=True, sharey=True)
+        
+        if num_models == 1:
+            axes = [axes]
+        else:
+            axes = axes.flatten()
+            
+        colors = ['#1f77b4', '#9467bd', '#2ca02c', '#d62728', '#ff7f0e', '#17becf', '#e377c2', '#8c564b', '#7f7f7f', '#bcbd22']
+        
         for i, model in enumerate(models):
-                # Plot VaR as a line
-                ax.plot(df_plot.index, df_plot[model], 
-                        color=colors[i], linewidth=2, label=model, linestyle='--')
+            ax = axes[i]
+            color = colors[i % len(colors)]
+            
+            # Plot realized returns in a light gray line for context
+            ax.plot(df_plot.index, df_plot['realized'], color='#d3d3d3', alpha=0.5, linewidth=1, label='Realized Returns')
+            
+            # Plot model VaR line
+            ax.plot(df_plot.index, df_plot[model], color=color, linewidth=2, linestyle='--', label=f'{model} VaR')
+            
+            # Calculate and plot breaches for this model specifically
+            breaches = df_plot['realized'] < df_plot[model]
+            non_breaches = ~breaches
+            
+            # Plot non-breaches in light green
+            ax.scatter(df_plot[non_breaches].index, df_plot[non_breaches]['realized'], 
+                       color='#2ca02c', s=15, alpha=0.3, label='No Breach', zorder=2)
+            
+            # Highlight breaches in vivid red
+            ax.scatter(df_plot[breaches].index, df_plot[breaches]['realized'], 
+                       color='#d62728', s=25, alpha=0.9, label='Breach', zorder=3, edgecolors='black', linewidth=0.5)
+            
+            # Calculate statistics
+            total_obs = len(df_plot)
+            num_breaches = int(breaches.sum())
+            breach_rate = num_breaches / total_obs
+            mean_var = abs(df_plot[model].mean())
+            
+            # Kupiec p-value
+            try:
+                p_val = stats.binomtest(num_breaches, total_obs, 0.01, alternative='two-sided').pvalue
+            except AttributeError:
+                p_val = stats.binom_test(num_breaches, total_obs, 0.01, alternative='two-sided')
+                
+            status = "PASS" if p_val > 0.05 and abs(breach_rate - 0.01) < 0.01 else "FAIL"
+            
+            # Text box with key metrics
+            stats_text = (
+                f"{model}\n"
+                f"Breaches: {num_breaches}/{total_obs} ({breach_rate*100:.2f}%)\n"
+                f"Mean VaR: {mean_var*100:.2f}%\n"
+                f"Kupiec p-val: {p_val:.4f} ({status})"
+            )
+            
+            ax.text(0.01, 0.95, stats_text, transform=ax.transAxes,
+                    fontsize=9, verticalalignment='top',
+                    bbox=dict(boxstyle='round,pad=0.5', facecolor='#f8f9fa', edgecolor='#e2e8f0', alpha=0.9))
+            
+            ax.set_ylabel('Returns / VaR', fontsize=10)
+            ax.grid(True, linestyle=':', alpha=0.6)
+            ax.legend(loc='upper right', fontsize=8, framealpha=0.8)
+            ax.set_title(f"Model Comparison: {model}", fontsize=11, fontweight='bold', loc='left')
 
-                # Separate points based on whether they breach VaR
-                breaches |= df_plot['realized'] < df_plot[model]
+        # Hide unused subplots
+        for j in range(num_models, len(axes)):
+            fig.delaxes(axes[j])
+            
+        # Format x-axis dates for all active axes
+        for i in range(num_models):
+            axes[i].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+            axes[i].xaxis.set_major_locator(mdates.MonthLocator(interval=3))
+            axes[i].tick_params(axis='x', rotation=45, labelsize=10)
+            
+            # Only set xlabel on bottom row
+            if i >= num_models - cols:
+                axes[i].set_xlabel('Date', fontsize=12)
         
-        non_breaches = ~breaches
-
-        # Plot non-breach points in green
-        ax.scatter(df_plot[non_breaches].index, df_plot[non_breaches]['realized'],
-                color='green', s=30, label='Realized (No Breach)', zorder=3, alpha=0.7)
-
-        # Plot breach points in red
-        ax.scatter(df_plot[breaches].index, df_plot[breaches]['realized'],
-                color='red', s=30, label='Realized (Breach)', zorder=3, alpha=0.7)
-
-        # Format x-axis
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
-        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=3))  # Show every 3 months
-        plt.xticks(rotation=45, ha='right')
-
-        # Labels and title
-        ax.set_xlabel('Date', fontsize=12)
-        ax.set_ylabel('Returns', fontsize=12)
-        ax.set_title(f'VaR Model: {", ".join(models)} vs Realized Returns', fontsize=14, fontweight='bold')
-        ax.legend(loc='best')
-        ax.grid(True, alpha=0.3)
-
-        # Tight layout to prevent label cutoff
+        # Set y-limit to focus on negative returns and VaR
+        all_min = min(df_plot['realized'].min(), df_plot[models].min().min())
+        plt.ylim(bottom=all_min * 1.1, top=0.02)
+        
+        plt.suptitle('Value-at-Risk (VaR) Backtesting Comparison (α = 1%)', fontsize=14, fontweight='bold', y=0.99)
         plt.tight_layout()
+        
         if file_name:
-                plt.savefig(f'../images/{file_name}', dpi=300, bbox_inches='tight')
-        plt.show()
+            if os.path.isabs(file_name) or file_name.startswith('..'):
+                save_target = file_name
+            else:
+                save_target = f'../images/{file_name}'
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(os.path.abspath(save_target)), exist_ok=True)
+            plt.savefig(save_target, dpi=300, bbox_inches='tight')
+            
+        if show:
+            plt.show()
 
 import matplotlib.dates as mdates
 
@@ -260,12 +326,12 @@ def compare_two_models(df_results, model_1, model_2):
     plt.plot(df_results.index, df_results['realized'], 
             color='gray', alpha=0.3, linewidth=1, label='Realized Returns')
 
-    # 2. Plot The Failure (Naive Model)
-    plt.plot(df_results.index, df_results[model_1], 
-            color='red', linestyle='--', linewidth=2, alpha=0.7, 
+    # 2. First model (typically the unanchored ablation)
+    plt.plot(df_results.index, df_results[model_1],
+            color='red', linestyle='--', linewidth=2, alpha=0.7,
             label=model_1)
 
-    # 3. Plot The Solution (Physics-Informed)
+    # 3. Second model (typically the anchored model)
     plt.plot(df_results.index, df_results[model_2], 
             color='green', linewidth=2.5, 
             label=model_2)

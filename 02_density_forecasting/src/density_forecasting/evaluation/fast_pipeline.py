@@ -147,7 +147,9 @@ def initializate_nn_model(columns_linear, model_class, lr, columns_deep=[], lamb
 
     num_linear_features = len(columns_linear) 
     dummy_x_linear = tf.zeros((1, num_linear_features))
-    num_deep_features = len(columns_deep)
+    
+    is_linear = (model_class == 'Linear')
+    num_deep_features = 0 if is_linear else len(columns_deep)
 
     if num_deep_features == 0:
         model(dummy_x_linear)
@@ -178,7 +180,7 @@ def initializate_nn_model(columns_linear, model_class, lr, columns_deep=[], lamb
     @tf.function
     def train_step(X_lin_batch, y_batch, prior_data=None, X_deep_batch=None):
         with tf.GradientTape() as tape:
-            if X_deep_batch is not None:
+            if X_deep_batch is not None and not is_linear:
                 mu, sigma, nu = model((X_lin_batch, X_deep_batch))
             else:
                 mu, sigma, nu = model(X_lin_batch)
@@ -190,7 +192,7 @@ def initializate_nn_model(columns_linear, model_class, lr, columns_deep=[], lamb
 
     @tf.function
     def val_step(X_lin_batch, y_batch, prior_data=None, X_deep_batch=None):
-        if X_deep_batch is not None:
+        if X_deep_batch is not None and not is_linear:
             mu, sigma, nu = model((X_lin_batch, X_deep_batch))
         else:
             mu, sigma, nu = model(X_lin_batch)
@@ -200,7 +202,8 @@ def initializate_nn_model(columns_linear, model_class, lr, columns_deep=[], lamb
     return train_step, val_step, model
 
 def backtesting_neural_networks(X_linear_test, X_deep_test, y_test, model):
-    if X_deep_test is not None:
+    is_linear = (model.__class__.__name__ == 'LinearStudentTNet')
+    if X_deep_test is not None and not is_linear:
         pred_mu_test, pred_sigma_test, pred_nu_test = model((X_linear_test, X_deep_test))
     else:
         pred_mu_test, pred_sigma_test, pred_nu_test = model(X_linear_test)
