@@ -1,0 +1,44 @@
+Of 16 comparisons where validation selected a non-zero weight, \textbf{6 (37.5\%) were worse than
+\texttt{w\ =\ 0}} on the evaluation block. Binomial \(p = 0.45\) against a coin flip; 95\% CI
+{[}0.15, 0.65{]}. We initially reported this as evidence that the selection signal is noise.
+
+It is not. At n = 16 the design detects a proportion only below \textbf{0.147} or above \textbf{0.853}.
+Power against the observed effect is \textbf{9.5\%}. Reaching 80\% power would need \textbf{125
+comparisons}. A selection procedure with a genuinely useful 30\% error rate would have been
+missed 91\% of the time.
+
+The correct statement is \emph{undetermined}, not \emph{chance}. We also retract our earlier framing of
+four configurations as independent replications: they share assets and periods.
+
+\textbf{And ``undetermined'' is still not the whole answer.} Cawley and Talbot (2010) established that
+a model-selection criterion is itself an estimator with a variance, and that optimising it over
+a finite sample \textbf{over-fits the criterion} exactly as training over-fits the data. Two of their
+findings apply directly:
+
+\begin{itemize}
+\tightlist
+\item
+  They deliberately construct \emph{``a split-sample based model selection strategy with a relatively
+  high variance, \textbf{due to the limited size of the validation set}''} --- which is our design, not
+  a pathological case. Enlarging the validation block tightens the selected hyper-parameter
+  around the optimum; ours was fixed and short.
+\item
+  More seriously: \emph{``the effects of this form of over-fitting are often of \textbf{comparable magnitude
+  to differences in performance between learning algorithms}.''} Our observed anchoring edges
+  are 1--8\% of the loss level. \textbf{If selection over-fitting operates at the same scale as the
+  effect being measured, the comparison was conducted inside the noise floor of its own
+  selection step} --- a stronger and more specific statement than ``underpowered.''
+\end{itemize}
+
+They also observe that the criterion surface is often \emph{``a broad valley,''} so a badly chosen
+hyper-parameter can still generalise adequately. That is a better account of our 37.5\% than the
+one we first gave: not that selection carries no signal, but that the surface is flat and the
+block is short.
+
+Their prescribed remedy --- \emph{``evaluation \ldots{} should always involve multiple partitions of the data
+to form training/validation and test sets''} --- is only partly available here, because the data
+are time series and shuffling would leak. The available version is multiple \textbf{chronological}
+origins. We did not run them. That is a limitation, not a defence.
+
+\emph{Control: a power calculation. Cost: free. Never performed until a reviewer demanded it.
+The relevant literature is from 2010 and we did not read it until after the result.}

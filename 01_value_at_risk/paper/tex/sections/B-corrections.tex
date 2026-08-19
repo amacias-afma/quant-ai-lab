@@ -1,0 +1,32 @@
+\textbf{B.1 --- The cherry-picked cell.} \Cref{sec:synthetic} originally ran four weights and reported that the
+worthless anchor \emph{``stabilises 2.5$\times$ more''} than the true one. That figure was the largest of four
+cells; a bootstrap interval at n = 4 is near-uninformative, saturating at the observed range.
+The demonstration is pure numpy and runs in 22 seconds, so the grid was extended to ten points
+and 40 seeds. The honest statement is \emph{at least as much}, median relative ratio \textbf{1.04} --- weaker
+in magnitude, far stronger as evidence, because it is systematic rather than selected. Quoting
+the most extreme cell is precisely the practice \Cref{sec:multiplicity} criticises, and we did it in our own
+showcase.
+
+\textbf{B.2 --- The stale source of truth, twice.} When the demonstration was rerun on the denser grid,
+\texttt{outputs/paper\_figures.json} --- the file this paper's header promises every number is read from ---
+was not regenerated. It continued to hold the superseded four-weight values, \textbf{including the
+exact pair (5.57$\times$ and 13.85$\times$) whose quotient is the retracted 2.5$\times$.} Any regeneration of the
+manuscript from that file would have silently reinstated the figure the correction removed.
+
+The prose was right and the machine-readable source was stale, which is the harder failure to
+notice. It was caught by re-deriving every quoted figure from the result CSVs rather than
+trusting the summary.
+
+\textbf{The same defect was then found in a second file.} \texttt{outputs/bootstrap\_intervals.json} had
+likewise kept its synthetic entries at n = 4, with the retracted values sitting in the interval
+bounds. It had been written by hand --- its truncated keys (\texttt{synth\_informati}) made that visible in
+hindsight. The corrected intervals at n = 10 are \textbf{1.3$\times$ (95\% CI 1.1--3.4)} for the true anchor
+against \textbf{1.3$\times$ (95\% CI 1.2--9.5)} for the nonsense one: overlapping, and a cleaner statement of
+the null than the version we had.
+
+Both files are now derived by one script and verified by one command
+(\texttt{scripts/refresh\_paper\_figures.py\ -\/-check}, non-zero exit on drift), with regression tests that
+guard the specific retracted values by name. \textbf{The lesson generalises past this project:
+``numbers are never typed by hand'' is not sufficient --- the file they are read from must itself be
+derived.} Finding such a defect once is luck; the useful question is how many files of that kind
+a project has. Ours had two, and both were stale.

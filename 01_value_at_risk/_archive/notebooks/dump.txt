@@ -1,0 +1,193 @@
+df_results = reestructure_testdata(test_data_walk_forward) / scale_factor
+models_results[attempt_name] = df_results
+
+plot_var_results(df_results)
+
+styled = df_results[['predicted']].describe().style
+styled = styled.format("{:.0f}", subset=pd.IndexSlice['count', :])
+styled = styled.format("{:.2%}", subset=pd.IndexSlice[['mean', 'std', 'min', '25%', '50%', '75%', 'max'], :])
+
+styled
+---CELL---
+attempt_name = "4. Physics-Informed"
+regularization_pm = {'weight': 0.005}
+
+scale_factor = 100
+df_scaled = df.copy()
+df_scaled['log_ret'] = df_scaled['log_ret'] * scale_factor
+
+regularization_pm['df'] = df_scaled
+
+features = ['log_ret', 'std', 'log_ret^2']
+data_physics = create_features(df_scaled, ALPHA, ROLLING_WINDOW, features=features)
+
+---CELL---
+
+# We use the SimpleQuantileNeuron now
+model_physics, history_physics, _, test_data_physics = train_model(
+    data_physics, 
+    model_type='SimpleQuantileNeuron', 
+    alpha=ALPHA, 
+    epochs=EPOCHS, 
+    lr=LEARNING_RATE, 
+    rolling=ROLLING_WINDOW,
+    split_type={'date': split_date},
+    # pretrained_state_dict=model_walk_forward.state_dict(),
+    regularization_pm=regularization_pm
+)
+
+print("Training Complete.")
+---CELL---
+df_results = reestructure_testdata(test_data_physics) / scale_factor
+models_results[attempt_name] = df_results
+
+plot_var_results(df_results)
+styled = df_results[['predicted']].describe().style
+styled = styled.format("{:.0f}", subset=pd.IndexSlice['count', :])
+styled = styled.format("{:.2%}", subset=pd.IndexSlice[['mean', 'std', 'min', '25%', '50%', '75%', 'max'], :])
+
+styled
+---CELL---
+df_results = pd.DataFrame()
+for model, df_result in models_results.items():
+    df_result_aux = df_result[['predicted']].copy()
+    df_result_aux.columns = [model]
+    df_results = pd.concat([df_results, df_result_aux], axis=1)
+
+df_results = pd.concat([df_results, df_result[['realized']]], axis=1)
+df_results.index = pd.to_datetime(df_results.index.get_level_values(0))
+
+df_hist_var = df.copy()
+column = '6. Historical VaR'
+df_hist_var[column] = df_hist_var['log_ret'].rolling(252).quantile(0.01)
+df_hist_var[column] = df_hist_var[column].shift(1)
+df_hist_var.index = pd.to_datetime(df_hist_var.index)
+
+df_results = pd.concat([df_results, df_hist_var[column]], axis=1)
+df_results.dropna(inplace=True)
+---CELL---
+def calculate_metrics(df, alpha=0.01):
+    """
+    Generates a comparative table of VaR models.
+    """
+    metrics = []
+    
+    # Filter only model columns (excluding 'realized')
+    model_cols = [c for c in df.columns if c not in ['realized', 'date']]
+    
+    for col in model_cols:
+        # 1. Breach Rate (The Safety Check)
+        # Breach = Realized < Predicted (e.g. -5% < -4%)
+        breaches = df[df['realized'] < df[col]]
+        n_breaches = len(breaches)
+        n_total = len(df)
+        breach_rate = n_breaches / n_total
+        
+        # 2. Kupiec Test (The Statistical Validation)
+        # H0: Model matches target alpha. H1: It doesn't.
+        # p-value < 0.05 means "Model is BROKEN"
+        # p-value > 0.05 means "Model is PLAUSIBLE"
+        try:
+            p_val = stats.binomtest(n_breaches, n_total, alpha, alternative='two-sided').pvalue
+        except AttributeError:
+            # Fallback for older scipy versions
+            p_val = 0.0 # Placeholder
+            
+        # 3. Capital Efficiency (Mean VaR)
+        # We want this number to be small (closer to 0), but safe.
+        avg_var = df[col].mean()
+        
+        # 4. Responsiveness (Std Dev)
+        # Does the model react to vol, or is it a flat line?
+        responsiveness = df[col].std()
+        
+        metrics.append({
+            'Model': col,
+            'Breach Rate (%)': f"{breach_rate*100:.2f}%",
+            'Kupiec p-value': f"{p_val:.4f}",
+            'Avg Capital Reserved': f"{avg_var*100:.2f}%",
+            'Responsiveness (Std)': f"{responsiveness:.4f}",
+            'Status': "✅ PASS" if p_val > 0.05 and abs(breach_rate - alpha) < 0.01 else "❌ FAIL"
+        })
+        
+    return pd.DataFrame(metrics).set_index('Model')
+
+# Load and Display
+# results_df = pd.read_csv('results.csv', index_col=0, parse_dates=True)
+summary_table = calculate_metrics(df_results)
+
+print("\n=== 🏆 FINAL MODEL SHOWDOWN ===")
+display(summary_table)
+---CELL---
+# df_results
+metrics_to_export = {}
+
+df_realized = df_results[['realized']]
+df_results_aux = df_results.drop(columns='realized')
+total_obs = len(df_realized)
+for model in df_results_aux:
+    print(model)
+    if model[:3] != '3.2':
+        df_realized[df_results_aux[[model]].values < df_realized.values]
+        mean_var = df_results_aux[model].mean()
+        breaches = len(df_realized[df_results_aux[[model]].values >= df_realized.values])
+        # print(model, mean_var, breaches, total_obs)
+        model_aux = model.replace(' ', '').replace('-', '')[2:]
+        metrics_to_export[f'{model_aux}MeanVaR'] = f"{100 * mean_var:.2f}\\%"
+        metrics_to_export[f'{model_aux}Breaches'] = breaches
+        metrics_to_export[f'{model_aux}BreachRate'] = f"{100 * breaches / total_obs:.2f}\\%" 
+        metrics_to_export[f'{model_aux}Zone'] = 'CORRECT'
+        
+        metrics_to_export[f'{model_aux}Status'] = summary_table.loc[model, 'Status']
+        # paramBreaches
+        # paramBreachRate
+
+# 3. Write them to a .tex file
+with open('../results/metrics.tex', 'w') as f:
+    f.write("% Dynamically generated metrics from value_at_risk.ipynb\n")
+    for command, value in metrics_to_export.items():
+        f.write(f"\\newcommand{{\\{command}}}{{{value}}}\n")
+
+print("Successfully exported LaTeX metrics to ../results/metrics.tex")
+---CELL---
+metrics_to_export
+---CELL---
+# 2. Define the exact metrics you calculated in your notebook
+# (Replace the right-hand side with your actual python variables from the notebook)
+metrics_to_export = {
+    # Parametric Baseline
+    'paramBreaches': 3,                 # e.g., your parametric_breach_count variable
+    'paramBreachRate': '1.20\\%',       # e.g., f"{(parametric_breach_count/250)*100:.2f}\\%"
+    'paramMeanVar': '4.50\\%',          # e.g., f"{parametric_mean_var:.2f}\\%"
+    
+    # Naive LSTM
+    'naiveBreaches': 14,                # e.g., your naive_breach_count variable
+    'naiveBreachRate': '5.60\\%', 
+    'naiveZone': 'Red Zone',            # e.g., "Red Zone" if breaches >= 10
+    'naiveMeanVar': '2.10\\%',
+    
+    # Anchored LSTM (Proposed)
+    'anchoredBreaches': 4,              # e.g., your anchored_breach_count variable
+    'anchoredBreachRate': '1.60\\%',
+    'anchoredMeanVar': '2.80\\%',
+    
+    # The Hook / ROI
+    'capEfficiency': '38.5\\%'          # e.g., f"{((param_mean_var - anchored_mean_var) / param_mean_var)*100:.1f}\\%"
+}
+
+# 3. Write them to a .tex file
+with open('../results/metrics.tex', 'w') as f:
+    f.write("% Dynamically generated metrics from value_at_risk.ipynb\n")
+    for command, value in metrics_to_export.items():
+        f.write(f"\\newcommand{{\\{command}}}{{{value}}}\n")
+
+print("Successfully exported LaTeX metrics to ../results/metrics.tex")
+---CELL---
+model_1 = '1. Just Train the Model'
+model_4 = '4. Physics-Informed'
+model_6 = '6. Historical VaR'
+
+plot_var_results(df_results, models={model_1, model_4, model_6}, file_name='compare_results.png')
+# compare_two_models(df_results, model_1, model_2)
+# save_comparison_plot(df_results, model_1, model_2)
+# save_table_image(summary_table)

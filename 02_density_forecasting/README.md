@@ -1,64 +1,51 @@
-# 📊 Project 02: Density Forecasting & The Parametric Ceiling
+# Project 02 — Density Forecasting & The Parametric Ceiling
 
-> **From Single-Point Estimates to Full Probability Distributions.**
+> **Forecasting the entire return distribution with Neural SDEs and Path Signatures**
 
-Most quantitative models split into two worlds: the *Alpha World* (mean/prediction) and the *Risk World* (tails/loss). Density forecasting unifies both: the mean of the forecast distribution is your alpha signal, and the tails are your risk limits — **one model, one source of truth.**
+## Research Question
 
-## 🎯 The Objective & The Classical Ceiling
-The goal of this project is to build an algorithm that accurately forecasts the probability distribution of $T+1$ returns. 
+How do continuous-time Neural Stochastic Differential Equations (Neural SDEs) augmented with Path Signatures compare to highly-optimized parametric baselines (GARCH, Student-t, VIX-Scaled Student-t) at forecasting the **full conditional density** of next-day returns?
 
-Before introducing Deep Learning, we rigorously established the **Parametric Ceiling**. We built industry-standard classical models (GARCH, Student-t) and subjected them to a strict **60-Day Independent Block K-S Test** across three highly volatile stress-test assets: `ARKK` (Macro-Regime Shifts), `USO` (Exogenous Supply Shocks), and `BTC-USD` (Structural Fat Tails).
+## Approach
 
-### 📉 Empirical Motivation: The Baseline Failure
-*Failure Rate by Asset (Percentage of 60-Day Regimes Failed):*
+### Classical Baselines (built and benchmarked first)
+1. **GARCH(1,1) with Student-t innovations** — the workhorse.
+2. **MLE-fitted Student-t** with constant ν.
+3. **Proprietary factor-normalized VIX-Scaled Student-t** — a baseline that uses VIX as an exogenous scaling factor for the Student-t scale parameter, capturing volatility-of-volatility effects without leaving the parametric world.
 
-| Asset | Naive Gaussian | Student-t (Fat Tails) | GARCH(1,1) (Volatility Clustering) |
-| :--- | :--- | :--- | :--- |
-| **ARKK** | 34.6% | 26.9% | 19.2% |
-| **USO** | 30.8% | 19.2% | 15.4% |
-| **BTC-USD** | 45.0% | 32.5% | 37.5% |
+### AI Architecture
+4. **Path Signatures** (Rough Path Theory) as features encoding the full geometry of the recent price path, including non-linear cross-effects classical models cannot reach.
+5. **Neural SDE** trained to map signatures → conditional density of next-day returns. Drift and diffusion are parameterized by neural networks; loss is the negative log-likelihood under the implied density.
 
-**The Classical Flaw:** These models are strictly *backward-looking*. They rely entirely on historical data, adapting to market crashes only *after* they happen. 
+### Evaluation
+- Continuous Ranked Probability Score (CRPS) for full density quality.
+- Quantile Score across the 1%, 5%, 95%, 99% quantiles.
+- Kolmogorov-Smirnov and Anderson-Darling tests on PIT residuals (calibration).
+- Tail-shape diagnostics under regime breaks.
 
-## 🏆 Our Classical Champion: The VIX-Scaled Student-t
-To push the parametric equations to their absolute limit, we built a forward-looking hybrid model. By coupling the structural fat tails of the Student-t distribution with the regime-aware, options-implied scaling of the VIX (optimized daily via Nelder-Mead with factor normalization), we drastically reduced the calibration failure rates during crises like the COVID-19 crash.
+## Status
 
-**The Challenge Ahead:** The VIX model relies on a rigid, linear equation tied to the US equity market. It cannot capture the *idiosyncratic* non-linear geometry of individual assets (like Bitcoin). To solve this, we must transition to AI.
+✅ Classical baselines complete and benchmarked
+🚧 Neural SDE implementation in progress
+⏳ Out-of-sample evaluation pending
 
----
+## How to Run
 
-## 📐 Evaluation Framework
-We evaluate every model (Classical and AI) through three strict lenses:
+```bash
+cd 02_density_forecasting
+jupyter lab
+```
 
-1. **PIT (Probability Integral Transform):** Is the model *calibrated*? (Measured via the Kolmogorov-Smirnov test).
-2. **CRPS (Continuous Ranked Probability Score):** How close is the *whole distribution* to reality?
-3. **Log-Likelihood:** How much probability did we assign to what actually happened?
+## Files
 
----
+- `01_classical_baselines.ipynb` — GARCH, Student-t, VIX-Scaled Student-t.
+- `02_signatures_features.ipynb` — Path Signatures feature extraction.
+- `03_neural_sde.ipynb` — Neural SDE architecture and training (WIP).
+- `04_evaluation.ipynb` — calibration and tail diagnostics (WIP).
 
-## 🗺️ Research Roadmap
+## References
 
-| Phase | Status | Focus |
-|-------|--------|-------|
-| **01** | ✅ | Problem definition, evaluation framework (CRPS/PIT), and naive baselines. |
-| **02** | ✅ | **The Parametric Ceiling:** GARCH, VIX-Scaled baselines, and optimizer death-loop resolution. |
-| **03** | 🔜 | **AI Transition:** Extracting market geometry using **Path Signatures**. |
-| **04** | 🔜 | **Neural SDEs:** Training a continuous-time generator to defeat the VIX-Scaled champion. |
-
----
-
-## 📚 References & Literature
-
-This project builds upon foundational research in Rough Path Theory, Deep Learning, and Quantitative Finance:
-
-**Path Signatures & Rough Path Theory:**
-* Lyons, T. (1998). *Differential equations driven by rough signals*. Revista Matemática Iberoamericana.
-* Kidger, P., Bonnier, P., Perez Arribas, I., Salvi, C., & Lyons, T. (2019). *Deep Signature Transforms*. NeurIPS.
-
-**Neural Stochastic Differential Equations:**
-* Chen, R. T., et al. (2018). *Neural Ordinary Differential Equations*. NeurIPS.
-* Kidger, P., Foster, J., Li, X., & Lyons, T. (2021). *Neural SDEs as Infinite-Dimensional GANs*. ICML.
-
-**Probabilistic Evaluation & Volatility Modeling:**
-* Gneiting, T., & Raftery, A. E. (2007). *Strictly Proper Scoring Rules, Prediction, and Estimation*. JASA.
-* Bollerslev, T. (1986). *Generalized Autoregressive Conditional Heteroskedasticity*. Journal of Econometrics.
+- Lyons (1998) — Path Signatures.
+- Chen et al. (2018) — Neural ODEs / SDEs.
+- Kidger et al. (2021) — Neural SDEs as infinite-dimensional GANs.
+- Gneiting & Raftery (2007) — CRPS scoring.

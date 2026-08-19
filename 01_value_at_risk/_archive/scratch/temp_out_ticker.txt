@@ -1,0 +1,93 @@
+--- Cell 4 ---
+# === APPLY WIDGET SELECTIONS ===
+# Extract values from widgets
+# TICKER = ticker_widget.value
+# DATE_REPORT = date_widget.value.strftime('%Y-%m-%d')
+# ALPHA = alpha_widget.value
+# ROLLING_WINDOW = rolling_widget.value
+# EPOCHS = epochs_widget.value
+# LEARNING_RATE = lr_widget.value
+
+TICKER = ticker_widget
+DATE_REPORT = date_widget
+
+ALPHA = alpha_widget
+ROLLING_WINDOW = rolling_widget
+EPOCHS = epochs_widget
+LEARNING_RATE = lr_widget
+
+# Fixed parameters
+MARKET_DATA_SOURCE = 'yfinance'
+WEIGHT_PRIOR = 1.0
+
+# Display current configuration
+print("="*60)
+print("CURRENT CONFIGURATION")
+print("="*60)
+print(f"Ticker:          {TICKER} ({tickers.get(TICKER, 'Unknown')})")
+print(f"Report Date:     {DATE_REPORT}")
+print(f"Risk Level:      {ALPHA*100}% VaR (α={ALPHA})")
+print(f"Rolling Window:  {ROLLING_WINDOW} days")
+print(f"Epochs:          {EPOCHS}")
+print(f"Learning Rate:   {LEARNING_RATE}")
+print(f"Prior Weight:    {WEIGHT_PRIOR}")
+print("="*60)
+--- Cell 5 ---
+# Load data
+print(f"Loading data for {TICKER}...")
+df = read_data(TICKER, market_data_source=MARKET_DATA_SOURCE, end_date=DATE_REPORT)
+print(f"✓ Loaded {len(df)} observations")
+print(f"  Date range: {df.index[0]} to {df.index[-1]}")
+--- Cell 6 ---
+improved_price_plot(df, tickers[TICKER])
+
+# Display sample
+df.head()
+--- Cell 7 ---
+# Clean data
+df, n_outliers = clean_data(df, z_score_threshold=8)
+if n_outliers > 0:
+    print(f"⚠️ Found and smoothed {n_outliers} outliers")
+    improved_price_plot(df, tickers[TICKER])
+else:
+    print("✓ No outliers detected")
+--- Cell 10 ---
+df['log_ret'] = np.log(df['price'] / df['price'].shift(1))
+df.dropna(inplace=True)
+improved_price_plot(df, tickers[TICKER], column='log_ret')
+--- Cell 12 ---
+def print_parameters(TICKER, ALPHA, split_date, ROLLING_WINDOW):
+    # Train model
+    print(f"\n{'='*60}")
+    print(f"Training VaR Model - {TICKER}")
+    print(f"{'='*60}")
+    print(f"Risk Level (α): {ALPHA*100}%")
+    print(f"Training until: {split_date}")
+    print(f"Rolling window: {ROLLING_WINDOW} days")
+    print(f"{'='*60}\n")
+    return
+
+--- Cell 14 ---
+attempt_name = "Neural Network"
+features = ['log_ret']
+data = create_features(df, ALPHA, ROLLING_WINDOW, features=features)
+
+print_parameters(TICKER, ALPHA, split_date, ROLLING_WINDOW)
+
+split_type={'percentage': percentage_train}
+
+model, history, train_data, test_data = train_model(
+    data, 
+    model_type='QuantileLSTM', 
+    alpha=ALPHA, 
+    epochs=EPOCHS, 
+    lr=LEARNING_RATE, 
+    rolling=ROLLING_WINDOW, 
+    split_type=split_type,
+    silent=True,
+    regularization_pm=None
+)
+
+print(f"\n✓ Training complete!")
+print(f"  Final train loss: {history['train_loss'][-1]:.5f}")
+print(f"  Final test loss: {history['test_loss'][-1]:.5f}")

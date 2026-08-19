@@ -1,0 +1,23 @@
+A statistically convincing result can be produced by the fitting procedure rather than by the
+data, and no amount of additional statistical testing will detect this. We document four
+instances in a single pre-registered study, using as a vehicle the question of whether anchoring
+a quantile-loss model to a classical Value-at-Risk prior improves one-day-ahead forecasts. It
+does not; that answer is not the contribution. Over eight assets and two quantile levels the
+study produced four findings, each apparently well supported, and \textbf{all four were subsequently
+withdrawn}. One fell to a multiplicity correction, one to a power analysis, one to a check of
+the model's own seed noise --- three familiar failures. The fourth was the strongest result in the
+project, replicated across four runs with a dose--response relationship and a sign test at
+\(p = 5.2 \times 10^{-4}\), and \textbf{it survived every statistical control available}. It dissolved when asked
+whether the mechanism guaranteed it, at a cost of 28 minutes of validation compute and no test
+data at all.
+
+We disclose \textbf{1,959 test-set evaluations across 16 asset--level cells and four scoring passes},
+with \textbf{zero cells scored only once}, and we reproduce the decisive artefact synthetically with
+ground truth known: across a ten-point weight grid an anchor carrying \textbf{no information}
+stabilises the estimator \textbf{at least as much as the true optimum at 9 of 10 weights}
+(sign test \(p = 0.021\)) while forecasting materially worse. \textbf{The two controls that destroyed the
+two surviving findings --- a power calculation and a scale-matched permutation --- were also the two
+cheapest, and a five-paper survey coded against a pre-fixed schema finds neither in use.} None
+of these failures required anyone to behave badly, which is the paper's argument.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}

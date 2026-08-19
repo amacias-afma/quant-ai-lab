@@ -1,0 +1,99 @@
+% Four Findings That Dissolved — LaTeX build.
+%
+% Structure only at this stage: every section exists, every float exists, every citation
+% key resolves, and the document compiles. Prose is imported from paper/draft-v1.md
+% section by section (see Makefile target `import`), NOT retyped — retyping is how the
+% five citation errors in Appendix C were introduced.
+%
+% Build:  make named   (arXiv)      |  make anon  (TMLR)  |  make check (numbers)
+
+\documentclass[11pt]{article}
+\input{preamble}
+
+\title{Four Findings That Dissolved:\\A Pre-Registered Audit of a Value-at-Risk Study}
+
+\ifanonymous
+  \author{Anonymous authors\\Paper under double-blind review}
+\else
+  \author{%
+    Alvaro Macias\\
+    AFMA\\
+    \texttt{amacias@afmaing.cl}
+  }
+\fi
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\input{sections/abstract}
+\end{abstract}
+
+\section{Introduction}\label{sec:intro}
+\input{sections/01-introduction}
+
+\subsection{Where this paper came from}\label{sec:provenance}
+\input{sections/01a-provenance}
+
+\subsection{Setting and scope}\label{sec:scope}
+\input{sections/01b-scope}
+
+\section{Setup}\label{sec:setup}
+\input{sections/02-setup}
+
+\section{Four findings and their withdrawals}\label{sec:findings}
+\input{sections/03-findings}
+
+\subsection{``Anchoring improves out-of-sample loss'' --- multiplicity}\label{sec:multiplicity}
+\input{sections/03a-multiplicity}
+
+\subsection{``Weight selection is indistinguishable from chance'' --- power}\label{sec:power}
+\input{sections/03b-power}
+
+\subsection{``Higher capacity hurts accuracy'' --- the model's own noise}\label{sec:capacity}
+\input{sections/03c-capacity}
+
+\subsection{``Anchoring stabilises the estimator'' --- tautology}\label{sec:tautology}
+\input{sections/03d-tautology}
+
+\subsection{The artefact isolated: a synthetic demonstration}\label{sec:synthetic}
+\input{sections/03e-synthetic}
+
+\section{Disclosure}\label{sec:disclosure}
+\input{sections/04-disclosure}
+
+\section{Three defects, all in the same direction}\label{sec:defects}
+\input{sections/05-defects}
+
+\section{Checks on this study's own analysis}\label{sec:checks}
+\input{sections/06-checks}
+
+\section{The taxonomy}\label{sec:taxonomy}
+\input{sections/07-taxonomy}
+
+\section{Limitations}\label{sec:limitations}
+\input{sections/08-limitations}
+
+\section{Conclusion}\label{sec:conclusion}
+\input{sections/09-conclusion}
+
+\subsubsection*{Reproducibility statement}
+\input{sections/10-reproducibility}
+
+\bibliography{refs}
+
+\appendix
+\section{The test-touch ledger}\label{app:ledger}
+\input{sections/A-ledger}
+
+\section{Two corrections to our own demonstration}\label{app:corrections}
+\input{sections/B-corrections}
+
+\section{The citation audit}\label{app:citations}
+\input{sections/C-citations}
+
+\section{The literature survey}\label{app:survey}
+\input{sections/D-survey}
+
+\end{document}

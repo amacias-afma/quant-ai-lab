@@ -1,0 +1,40 @@
+We set out to test whether anchoring helps a quantile model forecast tail risk. It does not, in
+our hands --- but we cannot even claim that cleanly, because by the time we could ask the
+question properly we had spent the test set four times over.
+
+What we can offer is the record: four findings, four withdrawals, and the specific cheap check
+that dissolved each. The most instructive is the last. A result replicated across four runs,
+with a dose--response relationship and \(p = 5.2 \times 10^{-4}\), was a restatement of the fact that shrinkage
+shrinks.
+
+Three of the four withdrawals came from statistical controls, and are unremarkable for that
+reason. The fourth did not. \textbf{It was pre-registered, estimated over ten seeds, ranked on a
+strictly consistent loss, tested with Diebold--Mariano, screened by the Model Confidence Set,
+gated on coverage, replicated across four runs, and corroborated by a dose--response
+relationship --- and it survived all of it. It did not survive asking whether the mechanism itself
+guaranteed the result.}
+
+That question has no p-value attached and appears in no methods checklist. It costs one refit
+against a target chosen to carry no information. Where a paper offers stability, robustness, or
+reduced variance as evidence that a method is good, the question should be asked before the
+statistics are, because no quantity of the latter will answer it.
+
+\textbf{For the practitioner with a VaR model to ship on Monday}, the transferable step is one line
+of work: before comparing losses, refit the model against a prior permuted in time --- same mean,
+same variance, same marginal distribution, no information --- and check what your reported benefit
+does. Whatever survives that is yours. Whatever does not was the penalty.
+
+We began this project intending to publish a method. What we have instead is a control, and it
+is not even ours (\Cref{sec:synthetic}). That trade was not a bad one.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\hypertarget{appendices}{%
+\section{Appendices}\label{appendices}}
+
+The appendices carry the audit trail. Nothing in them is required to follow the argument; they
+exist so that a reader who wants to check a claim does not have to take our word for it, and so
+that the body of the paper can make the argument without narrating every correction along the
+way. \textbf{\Cref{app:corrections} and \Cref{app:citations} each record errors we made and caught. They are placed here
+rather than cut because a paper about verification that reported only its successes would be
+making the mistake it documents.}

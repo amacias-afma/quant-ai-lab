@@ -1,0 +1,36 @@
+{
+  "ticker": "^GSPC",
+  "alpha": 0.05,
+  "data_hash_sha256": "3abd485337b2ed209edae9d6a8b306f59dc26d9afef55183f91f43c846122281",
+  "train_end": "2021-12-31",
+  "val_end": "2023-06-30",
+  "split_sizes_train_val_test": [
+    1135,
+    375,
+    749
+  ],
+  "specifications_evaluated": 90,
+  "test_set_evaluations": 30,
+  "primary_hypothesis_H1": [
+    {
+      "anchored": "Anchor param",
+      "baseline": "Unanchored",
+      "anchored_median_pinball": 0.0010959888719397704,
+      "baseline_median_pinball": 0.001089295501543529,
+      "dm_stat": 0.038481628900045084,
+      "dm_p_anchored_better": 0.5153430198709514,
+      "n_common": 748,
+      "edge_exceeds_seed_iqr": false
+    },
+    {
+      "anchored": "Anchor hist",
+      "baseline": "Unanchored",
+      "anchored_median_pinball": 0.0010808993646067625,
+      "baseline_median_pinball": 0.001089295501543529,
+      "dm_stat": -0.8155447689191261,
+      "dm_p_anchored_better": 0.2075102525222418,
+      "n_common": 748,
+      "edge_exceeds_seed_iqr": true
+    }
+  ]
+}

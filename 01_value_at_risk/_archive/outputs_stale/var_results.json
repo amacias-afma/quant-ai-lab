@@ -1,0 +1,90 @@
+{
+    "BTC-USD": {
+        "1. Just Train the Model": {
+            "Breach Rate (%)": "0.00%",
+            "Kupiec p-value": "0.0001",
+            "Avg Capital Reserved": "-10.92%",
+            "Responsiveness (Std)": "0.0038",
+            "Status": "\u274c FAIL"
+        },
+        "2. Back To Basics": {
+            "Breach Rate (%)": "0.00%",
+            "Kupiec p-value": "0.0001",
+            "Avg Capital Reserved": "-10.46%",
+            "Responsiveness (Std)": "0.0029",
+            "Status": "\u274c FAIL"
+        },
+        "3. Feature Engineering": {
+            "Breach Rate (%)": "0.58%",
+            "Kupiec p-value": "0.2106",
+            "Avg Capital Reserved": "-7.68%",
+            "Responsiveness (Std)": "0.0126",
+            "Status": "\u2705 PASS"
+        },
+        "3.2. Walk-Forward Validation": {
+            "Breach Rate (%)": "0.10%",
+            "Kupiec p-value": "0.0008",
+            "Avg Capital Reserved": "-8.52%",
+            "Responsiveness (Std)": "0.0112",
+            "Status": "\u274c FAIL"
+        },
+        "4. Physics-Informed": {
+            "Breach Rate (%)": "0.87%",
+            "Kupiec p-value": "0.8753",
+            "Avg Capital Reserved": "-6.53%",
+            "Responsiveness (Std)": "0.0093",
+            "Status": "\u2705 PASS"
+        },
+        "6. Historical VaR": {
+            "Breach Rate (%)": "1.15%",
+            "Kupiec p-value": "0.5341",
+            "Avg Capital Reserved": "-6.24%",
+            "Responsiveness (Std)": "0.0109",
+            "Status": "\u2705 PASS"
+        }
+    },
+    "TSLA": {
+        "1. Just Train the Model": {
+            "Breach Rate (%)": "0.70%",
+            "Kupiec p-value": "0.5702",
+            "Avg Capital Reserved": "-10.39%",
+            "Responsiveness (Std)": "0.0075",
+            "Status": "\u2705 PASS"
+        },
+        "2. Back To Basics": {
+            "Breach Rate (%)": "1.13%",
+            "Kupiec p-value": "0.7031",
+            "Avg Capital Reserved": "-9.84%",
+            "Responsiveness (Std)": "0.0068",
+            "Status": "\u2705 PASS"
+        },
+        "3. Feature Engineering": {
+            "Breach Rate (%)": "0.85%",
+            "Kupiec p-value": "0.8504",
+            "Avg Capital Reserved": "-10.56%",
+            "Responsiveness (Std)": "0.0409",
+            "Status": "\u2705 PASS"
+        },
+        "3.2. Walk-Forward Validation": {
+            "Breach Rate (%)": "0.70%",
+            "Kupiec p-value": "0.5702",
+            "Avg Capital Reserved": "-11.33%",
+            "Responsiveness (Std)": "0.0298",
+            "Status": "\u2705 PASS"
+        },
+        "4. Physics-Informed": {
+            "Breach Rate (%)": "1.27%",
+            "Kupiec p-value": "0.4461",
+            "Avg Capital Reserved": "-9.08%",
+            "Responsiveness (Std)": "0.0138",
+            "Status": "\u2705 PASS"
+        },
+        "6. Historical VaR": {
+            "Breach Rate (%)": "0.99%",
+            "Kupiec p-value": "1.0000",
+            "Avg Capital Reserved": "-9.77%",
+            "Responsiveness (Std)": "0.0081",
+            "Status": "\u2705 PASS"
+        }
+    }
+}
