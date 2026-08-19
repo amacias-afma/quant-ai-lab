@@ -101,6 +101,29 @@ def test_dm_symmetric_and_twosided():
     assert p_two < 0.05
 
 
+def test_identical_models_give_no_difference_not_an_error():
+    # Two identical forecasts -> loss differential is exactly zero. The right answer is
+    # "no difference" (dm=0, p=0.5), NOT an exception. This case arises legitimately whenever
+    # a selected weight switches a component off, and raising here killed half a real panel.
+    rng = np.random.default_rng(11)
+    loss = rng.random(500) + 1.0
+    dm, p = diebold_mariano(loss, loss.copy(), lag=5, alternative="a_better")
+    assert dm == 0.0
+    assert p == 0.5
+    for alt in ("b_better", "two_sided"):
+        dm2, p2 = diebold_mariano(loss, loss.copy(), alternative=alt)
+        assert dm2 == 0.0 and p2 == 0.5
+
+
+def test_constant_loss_series_do_not_raise():
+    # Zero-variance differential that is not identically zero.
+    a = np.full(300, 2.0)
+    b = np.full(300, 1.0)
+    dm, p = diebold_mariano(a, b, lag=5, alternative="a_better")
+    assert np.isfinite(dm)
+    assert 0.0 <= p <= 1.0
+
+
 def test_shape_mismatch_raises():
     with pytest.raises(ValueError):
         pinball_loss_series(np.zeros(3), np.zeros(4), 0.05)

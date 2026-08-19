@@ -81,4 +81,11 @@ Thumbs.db
 
 # Project specific
 data/
+# ...but the frozen price snapshots MUST be committed: they are what makes every
+# reported number reproducible. Do not remove these negations.
+!data/snapshots/
+!data/snapshots/**
 *.log
+
+# Superseded pipeline + stale results, kept for reference only
+_archive/

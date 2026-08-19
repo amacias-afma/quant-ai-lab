@@ -67,8 +67,9 @@ Reported in full — the ablation row is the most informative one.
 
 ```bash
 cd 01_value_at_risk
-pip install -r requirements.txt
-PYTHONPATH=src python -m pytest tests/ -q     # 15 passed
+pip install -e .            # required: src/ layout, makes `value_at_risk` importable
+pip install -e ".[run]"     # + torch / arch / yfinance, needed to actually run the study
+python -m pytest -q         # 50 passed (paths come from pyproject, no PYTHONPATH needed)
 ```
 
 ## Evaluation protocol (`protocol.py`)
@@ -91,7 +92,9 @@ numbers.** Before this is a defensible article:
       `evaluation/{mcs,report,benchmarks}.py`, driven by `run_batch_anchored.py`
       (writes `outputs/anchored_batch_summary.{csv,md}`). **Outputs still need regenerating**;
       the old pass/fail `batch_summary.md` is deprecated.
-- [ ] Freeze and hash the input data (yfinance pull is not reproducible as-is).
+- [x] Freeze and hash the input data — `data/snapshot.py` writes hash-verified CSV snapshots
+      + manifest; `prepare()` reads them. **Run `python -m value_at_risk.data.snapshot` and
+      commit `data/snapshots/` to pin the study's inputs.**
 - [x] Fix the GARCH rescaling blow-up (e.g. BTC max reserve ≈ −443%) — the standardized-t
       quantile was divided by `sqrt((nu-2)/nu)` instead of multiplied; fixed in
       `garch_model.standardized_t_quantile`. **Outputs still need regenerating.**
@@ -123,6 +126,22 @@ tests/                       43 tests, no torch required for the scoring/registr
 _archive/                    superseded pipeline + stale results (see _archive/README.md)
 ```
 
+### Data is frozen, not fetched
+
+The first run downloads each ticker once and writes `data/snapshots/<TICKER>@<END>.csv` plus a
+`manifest.json` recording its sha256, row count and date range. Every later run loads that file
+and **verifies the hash**, so a rerun cannot silently train on different data. Commit the
+snapshots and the manifest.
+
+```bash
+python -m value_at_risk.data.snapshot                    # freeze the panel
+python -m value_at_risk.data.snapshot --verify           # check nothing drifted
+python -m value_at_risk.data.snapshot --force            # deliberate re-freeze (visible in git)
+```
+
+Feature construction is frozen too — see `docs/features.md`, pinned by
+`tests/test_features_contract.py`.
+
 ### Adding a model to test
 
 1. Define the `nn.Module` in `deep_var/architectures.py`.
@@ -140,6 +159,8 @@ python run_batch_anchored.py --models SimpleQuantileNeuron,QuantileMLP --alphas 
 
 - Engle (1982) — ARCH. Bollerslev (1986) — GARCH(1,1).
 - Koenker & Bassett (1978) — quantile regression / pinball loss.
-- Taylor (2019) — forecasting VaR/ES with a quantile-loss neural network.
+- Taylor (2019) - forecasting VaR/ES by a semiparametric asymmetric-Laplace (ES-CAViaR)
+  approach. NOTE: an earlier version of this file described this paper as a quantile-loss
+  neural network. That was wrong; corrected 2026-08-19. See paper/references.md.
 - Kupiec (1995); Christoffersen (1998) — VaR backtesting.
 - Diebold & Mariano (1995) — predictive-accuracy comparison.

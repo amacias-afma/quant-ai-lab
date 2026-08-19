@@ -18,7 +18,7 @@ import torch
 import torch.optim as optim
 
 from value_at_risk.models.deep_var.losses import AnchoredQuantileLoss
-from value_at_risk.models.deep_var.parametric_model import priori_value_at_risk
+from value_at_risk.models.deep_var.parametric_model import build_anchor_prior
 from value_at_risk.models.registry import build_model, get_model_info
 
 __all__ = ["set_seed", "train_model"]
@@ -36,10 +36,10 @@ def set_seed(seed: int = 42) -> None:
 
 
 def _anchor_series(df, dates, rolling, alpha, anchor_type):
-    """Classical VaR prior aligned to ``dates``. Returns a 1-D numpy array."""
-    df_var = priori_value_at_risk(df, rolling=rolling, alpha=alpha)
-    column = "value_at_risk_param" if anchor_type == "param" else "value_at_risk_hist"
-    return df_var.loc[dates, column].values
+    """Prior series aligned to ``dates``. Delegates to the torch-free implementation so the
+    prior logic (including the falsification controls) can be unit-tested without torch."""
+    return build_anchor_prior(df, dates, rolling=rolling, alpha=alpha,
+                              anchor_type=anchor_type)
 
 
 def train_model(
@@ -57,6 +57,9 @@ def train_model(
     silent: bool = False,
     seed: int = 42,
     refit_window: int = 22,
+    min_epochs: int = 100,
+    patience: int = 50,
+    tol: float = 1e-9,
 ):
     """Fit and walk forward, refitting every ``refit_window`` steps with a warm start.
 
@@ -103,7 +106,7 @@ def train_model(
     n_blocks = max(0, (num_samples - split_idx) // window)
 
     X_test_all, y_test_all, preds_all, dates_all = [], [], [], []
-    history = {"train_loss": [], "test_loss": []}
+    history = {"train_loss": [], "test_loss": [], "epochs_per_block": []}
     model = None
     X_train = y_train = None
 
@@ -129,7 +132,18 @@ def train_model(
         train_in = X_train.unsqueeze(1) if info.expects_sequence else X_train
         test_in = X_test.unsqueeze(1) if info.expects_sequence else X_test
 
-        loss_prev = np.inf
+        # Early stopping: patience on the BEST loss, with a floor of min_epochs.
+        #
+        # The previous rule broke as soon as two consecutive epochs differed by < 1e-6 in
+        # relative terms. For a linear model the pinball objective is piecewise linear, so it
+        # genuinely plateaus between steps and that rule fired almost immediately. Adding the
+        # L2 anchor makes the objective strictly convex and smooth, so the anchored model did
+        # NOT trip the rule and trained far longer than the unanchored one. The anchor was
+        # therefore buying training epochs, not statistical information — an optimisation
+        # artefact masquerading as a modelling result.
+        best_loss = np.inf
+        since_improved = 0
+        epochs_run = 0
         for epoch in range(epochs):
             model.train()
             preds_train = model(train_in)
@@ -147,15 +161,22 @@ def train_model(
             history["test_loss"].append(loss_test.item())
 
             loss = loss_train.item()
+            epochs_run = epoch + 1
             if np.isnan(loss):
                 if not silent:
                     print(f"[warn] NaN loss at epoch {epoch}; stopping this block")
                 break
-            if abs(1 - loss / (loss_prev + 1e-8)) < 1e-6:
+            if loss < best_loss - tol:
+                best_loss = loss
+                since_improved = 0
+            else:
+                since_improved += 1
+            if epoch + 1 >= min_epochs and since_improved >= patience:
                 if not silent:
-                    print(f"Early stopping at epoch {epoch}")
+                    print(f"Early stopping at epoch {epoch} (no improvement in {patience})")
                 break
-            loss_prev = loss
+
+        history["epochs_per_block"].append(epochs_run)
 
         model.eval()
         with torch.no_grad():

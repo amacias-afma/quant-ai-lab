@@ -24,6 +24,7 @@ fit_one contract
 from __future__ import annotations
 
 import hashlib
+import time
 from dataclasses import dataclass, field, replace
 from typing import Callable, Sequence
 
@@ -94,6 +95,9 @@ class SpecResult:
     forecasts: list[Forecast]                 # one per seed (TEST)
     chosen_weight: float
     val_pinball: float
+    # VAL median pinball at every weight in the grid. Persisted so a surprising selection
+    # (e.g. a boundary weight winning) can be diagnosed instead of guessed at.
+    val_curve: dict = field(default_factory=dict)
 
     @property
     def median_loss_series(self) -> np.ndarray:
@@ -107,6 +111,39 @@ class SpecResult:
         losses = [f.pinball() for f in self.forecasts]
         med_idx = int(np.argsort(losses)[len(losses) // 2])
         return self.forecasts[med_idx]
+
+
+def restrict_to_anchor_support(data: dict, anchor_df, rolling: int, alpha: float):
+    """Trim the dataset to rows where BOTH anchor priors are defined.
+
+    Why this exists: ``train_model`` drops rows whose anchor prior is NaN, but only when an
+    anchor is actually in use. That made ``weight = 0`` (no anchor) train on ~252 more rows
+    than ``weight > 0`` (historical prior needs a 252-day warm-up) — so the weight grid was
+    not comparing like with like, and the unanchored spec silently got more training data
+    than the anchored ones. That breaks the ladder's "identical data across rungs" rule and
+    biases the anchored-vs-unanchored ablation.
+
+    Applying this once, up front, makes every rung see exactly the same rows.
+    Returns ``(trimmed_data, n_dropped)``.
+    """
+    from value_at_risk.models.deep_var.parametric_model import priori_value_at_risk
+
+    dates = pd.Series(pd.to_datetime(np.asarray(data["dates"])))
+    prior = priori_value_at_risk(anchor_df, rolling=rolling, alpha=alpha)
+    cols = ["value_at_risk_param", "value_at_risk_hist"]
+    sub = prior.loc[dates.to_numpy(), cols]
+    valid = np.isfinite(sub.to_numpy()).all(axis=1)
+
+    n_dropped = int((~valid).sum())
+    if n_dropped == 0:
+        return data, 0
+    idx = np.nonzero(valid)[0]
+    out = dict(data)
+    d = data["dates"]
+    out["dates"] = d.iloc[idx].reset_index(drop=True) if isinstance(d, pd.Series) else np.asarray(d)[idx]
+    out["X"] = data["X"][idx]
+    out["y"] = data["y"][idx]
+    return out, n_dropped
 
 
 def _slice_upto(data: dict, upto) -> dict:
@@ -131,51 +168,96 @@ def _slice_upto(data: dict, upto) -> dict:
 
 def select_anchor_weight(
     data: dict, spec: Spec, split, seeds: Sequence[int], fit_one: FitOne, anchor_df,
-    train_end, val_end,
-) -> tuple[float, float]:
+    train_end, val_end, verbose: bool = False, selection_rule: str = "argmin",
+) -> tuple[float, float, dict]:
     """Pick the anchor weight that minimises median VALIDATION pinball across seeds.
 
     Returns (chosen_weight, val_pinball_at_choice). Only VAL is touched here.
     """
     if not spec.anchor or spec.weight_grid == (0.0,):
-        return 0.0, float("nan")
+        return 0.0, float("nan"), {}
 
     val_data = _slice_upto(data, val_end)          # so walk-forward covers VAL only
     best_w, best_loss = 0.0, np.inf
+    curve: dict[float, float] = {}
+    spread: dict[float, float] = {}
     for w in spec.weight_grid:
+        t0 = time.time()
         seed_losses = []
         for s in seeds:
             dates, realised, var = fit_one(val_data, spec, s, w, train_end, anchor_df)
             seed_losses.append(scoring.pinball_loss(realised, var, spec.alpha))
         med = float(np.median(seed_losses))
+        curve[float(w)] = med
+        # standard error of the VAL loss across seeds, for the one-SE rule
+        spread[float(w)] = float(np.std(seed_losses, ddof=1) / np.sqrt(len(seed_losses))) \
+            if len(seed_losses) > 1 else 0.0
+        if verbose:
+            print(f"    [VAL] weight={w:<6g} median pinball={med:.6e}  "
+                  f"({len(list(seeds))} seeds, {time.time() - t0:.1f}s)", flush=True)
         if med < best_loss:
             best_w, best_loss = float(w), med
-    return best_w, best_loss
+
+    if selection_rule == "one_se" and curve:
+        # One-standard-error rule: among weights whose VAL loss is within one SE of the best,
+        # take the SMALLEST. The anchored family nests the unanchored model at w=0, so the
+        # simpler model should win ties — otherwise a noisy VAL signal buys complexity for
+        # nothing. Measured selection-error rate under plain argmin was ~45%.
+        threshold = best_loss + spread.get(best_w, 0.0)
+        eligible = [w for w, v in curve.items() if v <= threshold]
+        if eligible:
+            chosen = float(min(eligible))
+            if verbose and chosen != best_w:
+                print(f"    [VAL] one-SE rule: argmin was {best_w:g}, within 1 SE "
+                      f"({threshold:.6e}) -> choosing simpler {chosen:g}", flush=True)
+            best_w, best_loss = chosen, curve[chosen]
+
+    if verbose:
+        print(f"    [VAL] -> chosen weight={best_w:g}  (rule={selection_rule})", flush=True)
+    return best_w, best_loss, curve
 
 
 def run_spec(
     data: dict, spec: Spec, split, fit_one: FitOne, anchor_df=None,
     seeds: Sequence[int] = DEFAULT_SEEDS, train_end=None, val_end=None,
-    enforce_min_seeds: bool = True,
+    enforce_min_seeds: bool = True, val_seeds: Sequence[int] | None = None,
+    verbose: bool = False, selection_rule: str = "argmin",
 ) -> SpecResult:
     """Select the weight on VAL, then produce the seed distribution of TEST forecasts."""
-    chosen_w, val_loss = select_anchor_weight(
-        data, spec, split, seeds, fit_one, anchor_df, train_end, val_end
+    chosen_w, val_loss, val_curve = select_anchor_weight(
+        data, spec, split, val_seeds if val_seeds is not None else seeds,
+        fit_one, anchor_df, train_end, val_end, verbose=verbose,
+        selection_rule=selection_rule,
     )
     forecasts: list[Forecast] = []
-    for s in seeds:
+    t0 = time.time()
+    for i, s in enumerate(seeds, 1):
         dates, realised, var = fit_one(data, spec, s, chosen_w, val_end, anchor_df)
         forecasts.append(Forecast(np.asarray(dates), np.asarray(realised),
                                   np.asarray(var), spec.alpha))
+        if verbose:
+            print(f"    [TEST] seed {i}/{len(list(seeds))} "
+                  f"pinball={forecasts[-1].pinball():.6e}  "
+                  f"({time.time() - t0:.1f}s elapsed)", flush=True)
     summary = aggregate_seeds([f.pinball() for f in forecasts], enforce_min=enforce_min_seeds)
     return SpecResult(spec=spec, test_summary=summary, forecasts=forecasts,
-                      chosen_weight=chosen_w, val_pinball=val_loss)
+                      chosen_weight=chosen_w, val_pinball=val_loss, val_curve=val_curve)
 
 
 def compare_to_baseline(anchored: SpecResult, baseline: SpecResult, lag: int = 5) -> dict:
-    """Diebold-Mariano: is the anchored spec's median-seed loss below the baseline's?
+    """Diebold-Mariano plus BOTH seed-noise readings of H4.
 
-    Uses common dates only. Returns the DM statistic and one-sided p (H1: anchored better).
+    H4 asks whether the model-vs-baseline gap exceeds "the inter-seed IQR". That phrase is
+    ambiguous when the two models have very different seed dispersion, and the two readings
+    can disagree — so this reports both rather than silently picking the flattering one:
+
+    - ``edge_exceeds_anchored_iqr`` (lenient): the anchored spec's own q75 sits below the
+      baseline's median. Answers "is the model under test reliably better?"
+    - ``edge_exceeds_baseline_iqr`` (conservative): the gap is larger than the BASELINE's
+      inter-seed IQR. Answers "is the gap bigger than the noise of the thing we compare to?"
+
+    ``seed_noise_verdict`` is "detectable" only when both agree, "ambiguous" when they
+    disagree, "not detectable" when neither holds. Report the verdict, not one reading.
     """
     fa, fb = anchored.median_forecast, baseline.median_forecast
     da = pd.Series(fa.loss_series(), index=pd.to_datetime(fa.dates))
@@ -183,12 +265,42 @@ def compare_to_baseline(anchored: SpecResult, baseline: SpecResult, lag: int = 5
     common = da.index.intersection(db.index)
     dm, p = scoring.diebold_mariano(da.loc[common].to_numpy(), db.loc[common].to_numpy(),
                                     lag=lag, alternative="a_better")
+
+    edge = baseline.test_summary.median - anchored.test_summary.median   # >0 => anchored better
+
+    # VAL can legitimately switch the anchor off (weight 0). Then the "anchored" spec IS the
+    # unanchored one and the comparison is vacuous by construction — a finding in its own
+    # right ("validation selected no anchoring"), not a result to average in with the rest.
+    anchor_disabled = bool(anchored.chosen_weight == 0.0)
+    identical = bool(np.allclose(
+        anchored.median_forecast.var, baseline.median_forecast.var, rtol=0, atol=0
+    )) if len(anchored.median_forecast.var) == len(baseline.median_forecast.var) else False
+
+    lenient = bool(anchored.test_summary.dominates(baseline.test_summary.median))
+    conservative = bool(edge > baseline.test_summary.iqr)
+    if anchor_disabled or identical:
+        verdict = "anchor disabled by VAL"
+    elif lenient and conservative:
+        verdict = "detectable"
+    elif lenient or conservative:
+        verdict = "ambiguous"
+    else:
+        verdict = "not detectable"
+
     return {
         "anchored": anchored.spec.name, "baseline": baseline.spec.name,
         "anchored_median_pinball": anchored.test_summary.median,
         "baseline_median_pinball": baseline.test_summary.median,
+        "edge": edge,
+        "anchored_iqr": anchored.test_summary.iqr,
+        "baseline_iqr": baseline.test_summary.iqr,
         "dm_stat": dm, "dm_p_anchored_better": p, "n_common": int(len(common)),
-        "edge_exceeds_seed_iqr": bool(anchored.test_summary.dominates(baseline.test_summary.median)),
+        # Both readings of H4, always reported together.
+        "edge_exceeds_anchored_iqr": lenient,
+        "edge_exceeds_baseline_iqr": conservative,
+        "seed_noise_verdict": verdict,
+        "anchor_disabled_by_val": anchor_disabled,
+        "identical_forecasts": identical,
     }
 
 
@@ -200,7 +312,14 @@ def results_frame(results: Sequence[SpecResult]) -> pd.DataFrame:
         rows.append({
             "spec": r.spec.name, "model": r.spec.model_type, "alpha": r.spec.alpha,
             "anchor": r.spec.anchor or "none", "chosen_weight": r.chosen_weight,
+            "val_pinball_at_choice": r.val_pinball,
+            "val_pinball_at_zero": r.val_curve.get(0.0, float("nan")),
+            "val_curve": ";".join(f"{w:g}:{v:.6e}" for w, v in sorted(r.val_curve.items())),
             "n_seeds": r.test_summary.n_seeds,
+            # Per-seed losses, persisted so a seed-level bootstrap is possible from the CSV
+            # alone. Earlier runs stored only quartiles, which made the interval Risk F7
+            # required impossible to compute without re-running the whole study.
+            "pinball_per_seed": ";".join(f"{f.pinball():.9e}" for f in r.forecasts),
             "pinball_median": r.test_summary.median,
             "pinball_iqr": r.test_summary.iqr,
             "pinball_q25": r.test_summary.q25, "pinball_q75": r.test_summary.q75,
@@ -216,6 +335,8 @@ def run_study(
     data: dict, specs: Sequence[Spec], train_end, val_end, fit_one: FitOne,
     anchor_df=None, seeds: Sequence[int] = DEFAULT_SEEDS,
     out_csv: str | None = None, enforce_min_seeds: bool = True,
+    val_seeds: Sequence[int] | None = None, verbose: bool = False,
+    selection_rule: str = "argmin",
 ) -> tuple[pd.DataFrame, list[SpecResult]]:
     """Full study: split -> per-spec seed distributions -> ranked table (+ optional CSV).
 
@@ -223,16 +344,37 @@ def run_study(
     """
     dates = np.asarray(data["dates"])
     split = chronological_split(pd.to_datetime(pd.Series(dates)).to_numpy(), train_end, val_end)
-    results = [
-        run_spec(data, spec, split, fit_one, anchor_df=anchor_df, seeds=seeds,
-                 train_end=train_end, val_end=val_end, enforce_min_seeds=enforce_min_seeds)
-        for spec in specs
-    ]
+    if verbose:
+        n_val = len(list(val_seeds if val_seeds is not None else seeds))
+        n_fits = sum((len(s.weight_grid) * n_val if s.anchor else 0) + len(list(seeds))
+                     for s in specs)
+        print(f"[study] {len(specs)} specs · {len(list(seeds))} seeds · "
+              f"~{n_fits} model fits · split {split.sizes} (train/val/test)", flush=True)
+
+    results = []
+    t_start = time.time()
+    for i, spec in enumerate(specs, 1):
+        if verbose:
+            print(f"\n[{i}/{len(specs)}] {spec.name}  "
+                  f"(model={spec.model_type}, anchor={spec.anchor or 'none'})", flush=True)
+        results.append(
+            run_spec(data, spec, split, fit_one, anchor_df=anchor_df, seeds=seeds,
+                     train_end=train_end, val_end=val_end,
+                     enforce_min_seeds=enforce_min_seeds, val_seeds=val_seeds,
+                     verbose=verbose, selection_rule=selection_rule)
+        )
+    if verbose:
+        print(f"\n[study] done in {time.time() - t_start:.1f}s", flush=True)
     frame = results_frame(results)
 
     # Two disclosure integers (validation-protocol §7).
-    n_specs_evaluated = sum(max(1, len(s.weight_grid) if s.anchor else 1) * len(seeds)
-                            for s in specs)
+    # NOTE: weight selection runs on VAL with val_seeds, which may differ from the reporting
+    # seeds. Counting it with len(seeds) overstated the figure whenever --val-seeds was used.
+    n_val_seeds = len(list(val_seeds if val_seeds is not None else seeds))
+    n_specs_evaluated = sum(
+        (len(s.weight_grid) * n_val_seeds if s.anchor else 0) + len(list(seeds))
+        for s in specs
+    )
     n_test_evaluations = len(specs) * len(seeds)
     frame.attrs["specifications_evaluated"] = int(n_specs_evaluated)
     frame.attrs["test_set_evaluations"] = int(n_test_evaluations)

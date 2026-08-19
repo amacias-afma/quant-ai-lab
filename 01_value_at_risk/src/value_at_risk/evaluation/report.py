@@ -31,9 +31,25 @@ def align_forecasts(named: dict):
     var_df = pd.DataFrame(var_cols).dropna()
     dates = var_df.index
     real_df = pd.DataFrame(real_cols).loc[dates]
-    # realised must agree across models on common dates
-    if not np.allclose(real_df.to_numpy(), real_df.iloc[:, [0]].to_numpy(), equal_nan=True):
-        raise ValueError("realised returns differ across models on common dates — misaligned data")
+    # The realised next-day return must be identical across models on shared dates. If it is
+    # not, some model is scored against a different target and the whole table is meaningless.
+    # Tolerance allows float32 (torch) vs float64 (pandas) round-trips.
+    ref = real_df.iloc[:, [0]].to_numpy()
+    diffs = np.abs(real_df.to_numpy() - ref)
+    if not np.allclose(real_df.to_numpy(), ref, rtol=1e-5, atol=1e-8, equal_nan=True):
+        worst_col = int(np.nanargmax(np.nanmax(diffs, axis=0)))
+        worst_row = int(np.nanargmax(diffs[:, worst_col]))
+        raise ValueError(
+            "realised returns differ across models on common dates — misaligned targets.\n"
+            f"  reference model : {names[0]}\n"
+            f"  worst mismatch  : {names[worst_col]} (max |diff| = "
+            f"{np.nanmax(diffs[:, worst_col]):.3e})\n"
+            f"  first bad date  : {pd.Timestamp(dates[worst_row]).date()} "
+            f"({names[0]}={ref[worst_row, 0]:.6f} vs "
+            f"{names[worst_col]}={real_df.to_numpy()[worst_row, worst_col]:.6f})\n"
+            "  Usual cause: one path forgot the shift(-1), so it is scored against r_t "
+            "instead of r_{t+1}."
+        )
     realised = real_df.iloc[:, 0].to_numpy()
     V = var_df[names].to_numpy()
     L = np.column_stack([scoring.pinball_loss_series(realised, V[:, i], alpha)

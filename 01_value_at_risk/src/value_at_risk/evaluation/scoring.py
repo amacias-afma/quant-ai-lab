@@ -173,9 +173,23 @@ def diebold_mariano(loss_a, loss_b, lag: int = 5, alternative: str = "a_better")
         raise ValueError("loss series must be the same length")
     d = la - lb
     n = d.size
+
+    # Degenerate case: the two models produced IDENTICAL forecasts, so the loss differential
+    # is exactly zero. This is not an error — it is the correct answer "no difference", and it
+    # happens legitimately whenever a selected hyper-parameter switches a component off (e.g.
+    # an anchor weight of 0 makes the anchored model the unanchored one). Raising here would
+    # discard exactly the most informative outcome.
+    if not np.any(d):
+        return 0.0, 0.5
+
     lrv = _newey_west_var(d, lag)
     if lrv <= 0:
-        raise ValueError("non-positive long-run variance; cannot form DM statistic")
+        # The Bartlett kernel is positive semi-definite, so this is a numerical edge case
+        # rather than a real negative variance. Fall back to the iid (lag-0) estimator, which
+        # is non-negative by construction, instead of failing the whole run.
+        lrv = float(np.var(d, ddof=1))
+        if lrv <= 0:
+            return 0.0, 0.5
     dm = d.mean() / np.sqrt(lrv / n)
     # Harvey-Leybourne-Newbold correction
     corr = np.sqrt((n + 1 - 2 * lag + lag * (lag - 1) / n) / n)
