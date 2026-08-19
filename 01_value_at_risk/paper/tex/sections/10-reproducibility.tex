@@ -1,0 +1,25 @@
+Every number in this paper is read from a result file. None is typed by hand, and the
+correspondence is checked by a command that fails on drift. Inputs are frozen ten-year snapshots
+with sha256 manifests, verified on load. The five commands below reproduce the tests, the frozen
+inputs, the two disclosure integers of \Cref{sec:disclosure}, the consistency of the figures file with the result
+CSVs, and both figures.
+
+\begin{verbatim}
+pip install -e ".[run]"
+python -m pytest -q                                  # 115 passed, 5 skipped
+python -m value_at_risk.data.snapshot --verify       # frozen inputs, sha256
+python -m value_at_risk.evaluation.ledger --summary  # the disclosure integers
+python scripts/refresh_paper_figures.py --check      # figures file vs result files
+python scripts/make_figures.py                       # Figures 1 and 2, from the CSVs
+python scripts/measure_contraction.py                # accuracy of the derivation in \Cref{sec:synthetic}
+\end{verbatim}
+
+The synthetic demonstration of \Cref{sec:synthetic} is pure numpy and runs in 22 seconds; it requires no market
+data and no GPU, so the central claim of the paper can be checked independently of everything
+else in the repository.
+
+\textbf{What cannot be reproduced.} The per-seed losses of the original stage-1 runs were not
+persisted (\Cref{sec:synthetic}), so seed-level intervals cannot be recomputed from the archived outputs --- only
+comparison-level ones. The pipeline now persists them; the archived results predate the fix.
+
+\emph{Code and frozen data: \texttt{{[}repository\ DOI\ ---\ to\ be\ minted\ at\ submission{]}}.}

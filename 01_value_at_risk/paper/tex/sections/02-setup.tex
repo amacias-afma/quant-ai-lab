@@ -1,0 +1,21 @@
+\textbf{Question.} Does an L2 penalty pulling a quantile forecast toward a classical VaR prior
+(rolling Normal \texttt{mu\ -\ z*sigma}, or rolling historical quantile) improve out-of-sample pinball
+loss relative to the identical unanchored model?
+
+\textbf{The estimator nests its own baseline.} The anchor weight grid includes zero, so the anchored
+specification \emph{contains} the unanchored one. It therefore cannot be worse by construction; it
+can only lose through validation-selection error. This turns out to matter (\Cref{sec:power}).
+
+\textbf{Data.} Eight instruments spanning equity index, single names, crypto, metals, energy and FX.
+Ten-year frozen snapshots with sha256 manifests, verified on every load. Daily log returns.
+
+\textbf{Protocol.} Chronological TRAIN / VAL / TEST; monthly refit on an expanding window with warm
+start; $\geq$ 10 seeds per specification reported as median and IQR; pinball loss for ranking;
+Kupiec and Christoffersen as a coverage gate; Diebold--Mariano with HAC errors for pairs;
+Hansen's Model Confidence Set across the ladder.
+
+\textbf{Primary evidence set.} Only two cells had ever been scored before the main panel
+(\texttt{\^{}GSPC} at both levels and \texttt{BTC-USD} at $\alpha$ = 0.05, during debugging). Excluding them leaves
+\textbf{13 cells, 7 tickers, 26 comparisons} of genuine first contact. The exclusion criterion is
+file timestamps, independent of any result; the check in \Cref{sec:checks} shows that it moves both headline
+numbers \emph{against} the study's own thesis.

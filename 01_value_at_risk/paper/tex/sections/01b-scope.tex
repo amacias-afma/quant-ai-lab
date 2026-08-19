@@ -1,0 +1,45 @@
+\textbf{The vehicle is a Value-at-Risk study}, chosen because it is a domain with well-established
+baselines, a strictly consistent scoring function, and standard backtests --- an unusually
+favourable setting for detecting a spurious result. The question was narrow: does an L2 penalty
+anchoring a quantile-loss model to a classical VaR prior improve one-day-ahead forecasts? The
+answer is no. That answer is not the contribution, and readers interested in VaR modelling
+specifically will find \Cref{sec:limitations} disappointing by design.
+
+A survey of \textbf{five} machine-learning VaR papers, each read in full and coded against a schema
+fixed before any paper was read (\Cref{app:survey}), locates the gap more precisely. Practice in this
+literature is \textbf{heterogeneous, and no paper in the sample is careless} --- two use a held-out
+selection block, one selects on a strictly consistent loss, one corrects for multiplicity and
+then explicitly downgrades its own p-values, and all five gate on coverage.
+
+Across all five, however: \textbf{test-set reuse is never counted, no power analysis appears, and none
+is pre-registered.} The controls this field has institutionalised are not the controls that
+defeated this study. A convenience sample of five cannot establish a base rate and we do not
+claim it does; by the standard \Cref{sec:power} applies to our own nulls, it is an illustration.
+
+\textbf{Contributions.}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  A pre-registered VaR study reporting a complete null, with dated amendments including
+  several that weakened the authors' own position. Pre-registration remains rare in this
+  domain: as of July 2023 \textbf{$\leq$ 1\% of economics journals} had adopted the registered-report
+  format (Lin et al.~2024).
+\item
+  \textbf{Four failure modes observed in a single pre-registered study}, with the control that
+  detects each and its cost. We claim instances, not coverage: one study cannot establish a
+  taxonomy and we do not present one.
+\item
+  A demonstration --- analytical and synthetic, with ground truth known --- that
+  \textbf{shrinkage-induced stability is not evidence of a good prior}, together with a
+  scale-matched permutation control that separates the two for minutes of compute.
+  \textbf{Neither the mechanism nor the control is new}: the mechanism is Stein/ridge shrinkage,
+  and the control is a restricted randomization test with precedents in statistics, machine
+  learning and econometrics (\Cref{sec:synthetic}). What we document is that the artefact is \emph{reportable as an
+  empirical finding}, survives a pre-registered protocol with a dose--response and
+  \(p = 5.2 \times 10^{-4}\) --- and that we located no prior application of the control to a stability claim.
+\item
+  \emph{(Software artefact, \Cref{app:ledger}.)} An append-only \textbf{test-touch ledger} that makes
+  evaluation reuse countable rather than reconstructible after the fact.
+\end{enumerate}

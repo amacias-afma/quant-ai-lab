@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 from scipy import stats as st
 
+from value_at_risk.evaluation import shrinkage_demo as sd
 from value_at_risk.evaluation.shrinkage_demo import (
     simulate, optimal_theta, fit_anchored, seed_dispersion, pinball_loss,
     predicted_contraction, run_demo,
@@ -83,3 +84,53 @@ def test_scale_matched_control_is_genuinely_matched():
     nonsense = r / np.linalg.norm(r) * np.linalg.norm(theta_opt)
     assert np.isclose(np.linalg.norm(nonsense), np.linalg.norm(theta_opt))
     assert not np.allclose(nonsense, theta_opt)
+
+
+# --- the measured approximation (added after measuring what had been asserted) -----------
+
+def test_separation_trace_matches_fit_anchored():
+    """The traced loop must be the same algorithm as fit_anchored, not a re-implementation.
+
+    If these drift apart, the measurement measures the wrong thing.
+    """
+    X, y, ts = sd.simulate(n=800, alpha=0.05, seed=3)
+    a = sd.optimal_theta(ts)
+    obs, _ = sd.separation_trace(X, y, 0.05, a, w=0.02, seed_a=0, seed_b=1, steps=50)
+    ta = sd.fit_anchored(X, y, 0.05, a, 0.02, seed=0, steps=50)
+    tb = sd.fit_anchored(X, y, 0.05, a, 0.02, seed=1, steps=50)
+    rng_a = np.random.default_rng(1000 + 0)
+    rng_b = np.random.default_rng(1000 + 1)
+    d0 = np.linalg.norm(rng_a.standard_normal(X.shape[1]) * 3.0
+                        - rng_b.standard_normal(X.shape[1]) * 3.0)
+    assert abs(obs[-1] - np.linalg.norm(ta - tb) / d0) < 1e-12
+
+
+def test_anchor_cancels_only_to_first_order():
+    """The claim we corrected: the cancellation is exact for the penalty, not the trajectory.
+
+    An earlier docstring asserted the two anchors give identical trajectories "to numerical
+    precision". They do not — the anchor re-enters through the dropped data term. This test
+    pins the measured behaviour so a future change cannot quietly restore the false claim.
+    """
+    rows = sd.anchor_invariance(weights=(0.0, 0.005, 0.1), steps=200)
+    by_w = {r["weight"]: r["max_rel_diff"] for r in rows}
+    assert by_w[0.0] == 0.0                       # no penalty, no anchor, identical by construction
+    assert by_w[0.005] < 0.05                     # first-order agreement at small weight
+    assert by_w[0.1] > 0.05                       # and a real, measurable divergence at large weight
+
+
+def test_relative_contraction_is_the_accurate_quantity():
+    """Absolute prediction is poor; prediction of the ratio-to-baseline is good.
+
+    This is the distinction that keeps the paper's derivation usable: it never quotes an
+    absolute spread, only ratios against the unanchored baseline.
+
+    The horizon matters and the test uses the demonstration's own (steps=400, lr=0.05):
+    at shorter horizons the penalty has had fewer steps to dominate the data term and the
+    approximation is measurably worse. Testing at a different T would characterise a
+    different regime than the one the paper reports.
+    """
+    rows = sd.contraction_accuracy(weights=(0.0, 0.005, 0.03), steps=400, lr=0.05)
+    nz = [r for r in rows if r["weight"] > 0]
+    assert all(r["absolute_ratio"] < 0.5 for r in rows)      # raw formula badly off
+    assert all(0.9 < r["relative_ratio"] < 1.2 for r in nz)  # ratio-to-baseline close

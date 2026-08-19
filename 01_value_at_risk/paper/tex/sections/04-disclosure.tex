@@ -1,0 +1,20 @@
+From the append-only ledger, not a hand count:
+
+\begin{longtable}[]{@{}ll@{}}
+\toprule
+quantity & value\tabularnewline
+\midrule
+\endhead
+test-set evaluations & \textbf{1,959}\tabularnewline
+asset--level cells & 16\tabularnewline
+maximum scoring passes on one cell & \textbf{4}\tabularnewline
+cells scored exactly once & \textbf{0}\tabularnewline
+\bottomrule
+\end{longtable}
+
+Design choices between passes --- weight grid, selection rule, architecture, asset subset --- were
+informed by the previous pass's outcomes. Per our own protocol the honest description is that
+this project has several validation blocks and \textbf{no test set}.
+
+The ledger figure exceeds the 1,899 first reconstructed from run manifests: \textbf{60 evaluations
+appear in no manifest at all}, and were found only because the ledger was built (\Cref{app:ledger}).

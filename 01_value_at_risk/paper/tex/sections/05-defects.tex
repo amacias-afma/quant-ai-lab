@@ -1,0 +1,42 @@
+This section is not a confession, and should not be read as one. Each defect below is the kind
+that a competent implementation produces and a code review passes: a plausible convergence rule,
+a NaN-handling choice, an unguarded edge case. What is worth attention is not that they occurred
+but \emph{where they were found} --- all three surfaced when an unrelated check failed, none when a
+result that looked correct was audited.
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Early stopping.} The rule halted when consecutive epochs changed by \textless{} 1e-6. Pinball loss
+  on a linear model is piecewise linear and plateaus; the L2 anchor makes the objective smooth.
+  The anchored model trained roughly 42$\times$ more epochs per block. \emph{The anchor bought training,
+  not information.}
+\item
+  \textbf{Unequal training rows.} Rows with an undefined prior were dropped only when an anchor was
+  active, giving \texttt{w\ =\ 0} about 252 extra rows. The weight grid was not comparing like with like.
+\item
+  \textbf{A Diebold--Mariano exception} on identical forecasts crashed 8 of 16 cells --- exactly those
+  where validation had switched the anchor \emph{off}, the most informative outcome available.
+\end{enumerate}
+
+Each defect, before correction, favoured the hypothesis under test.
+
+\textbf{We must be careful here, because this is exactly the kind of claim this paper is about.}
+Three of three in the same direction is \textbf{\(p = 0.125\)} one-sided under independent signs. By our
+own standard in \Cref{sec:power} --- where 6/16 at \(p = 0.45\) was ruled insufficient --- n = 3 cannot support a
+conclusion, and we do not draw one.
+
+What we offer instead is a mechanism worth testing by someone with a larger sample: \emph{a defect
+that contradicts your hypothesis gets investigated; one that confirms it gets shipped.} Each of
+these three was found only because an unrelated check failed, not because anyone audited a
+result that looked right. That asymmetry in scrutiny is measurable in principle --- count, across
+a corpus of projects, the direction of defects found before versus after publication --- and we
+suggest it be measured rather than asserted.
+
+\textbf{A fourth class of defect appears in the bibliography.} Verifying all twenty citations stated
+from standing knowledge found \textbf{five errors}, four of them inherited from other people's
+descriptions of a source rather than from the source. One had the cited paper's argument
+\emph{backwards}, in the direction that would have supported us. \textbf{\Cref{app:citations}} reports the audit;
+the transferable claim is that the bibliography is part of the result, and checking it is an
+experiment whose outcome you cannot predict.

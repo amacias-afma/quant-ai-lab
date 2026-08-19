@@ -1,0 +1,63 @@
+% Preamble shared by both builds.
+%
+% To switch to the TMLR class: download tmlr.sty from https://jmlr.org/tmlr/ into this
+% directory, replace the \documentclass line in main.tex with the TMLR one, and set
+% \tmlrtrue below. Everything else in this file is class-agnostic.
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{calc}
+\usepackage{graphicx}
+
+% --- pandoc compatibility -------------------------------------------------------------
+% The prose is converted from paper/draft-v1.md by scripts/import_tex.py rather than
+% retyped (see Appendix C on why retyping is a defect source). These are the macros
+% pandoc's LaTeX writer emits and expects the preamble to define.
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\providecommand{\pandocbounded}[1]{#1}
+\newlength{\cslhangindent}
+\providecommand{\real}[1]{#1}
+\usepackage{caption}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage[margin=1.15in]{geometry}
+\usepackage{natbib}
+\bibliographystyle{plainnat}
+
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
+\usepackage{cleveref}
+
+% --- anonymisation switch -------------------------------------------------------------
+% TMLR review is double-blind and the submission must be anonymised. Build with
+%   make anon   -> writes \anonymoustrue  into anon.tex  (TMLR submission)
+%   make named  -> writes \anonymousfalse into anon.tex  (arXiv / Zenodo)
+%
+% The switch is the *contents* of anon.tex, not the existence of a flag file. An earlier
+% version tested \IfFileExists and broke on a mount that permits writing but not deletion:
+% the flag could never be cleared, so `make named` silently produced an anonymous PDF.
+% Contents can always be overwritten, so this works everywhere. Never edit anon.tex by
+% hand; the Makefile owns it, which is what keeps the two builds from drifting apart.
+\newif\ifanonymous
+\IfFileExists{anon.tex}{\input{anon}}{\anonymousfalse}
+
+\newcommand{\ifanon}[2]{\ifanonymous#1\else#2\fi}
+
+% --- shared macros --------------------------------------------------------------------
+\newcommand{\pinball}{\mathrm{pinball}}
+\newcommand{\vect}[1]{\bm{#1}}
+\usepackage{bm}
+
+% Emphasis for the paper's own corrections. Used deliberately and sparingly: every
+% occurrence marks a place where this paper reports an error it made and caught.
+\newcommand{\correction}[1]{\textbf{#1}}
+
+\captionsetup{font=small,labelfont=bf}
+\setlist{itemsep=2pt,topsep=4pt}

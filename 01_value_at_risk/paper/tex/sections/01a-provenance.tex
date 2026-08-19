@@ -1,0 +1,38 @@
+No one set out to write it. It began as an ordinary applied project with an ordinary ambition:
+show that anchoring a neural quantile model to a classical VaR prior beats the unanchored model.
+The intended paper was the one that gets written thousands of times a year --- \emph{our method wins,
+here is the table.}
+
+The starting state is worth describing precisely, because it is unremarkable and that is the
+point:
+
+\begin{itemize}
+\tightlist
+\item
+  The method was called a \textbf{physics-informed neural network}. It was not. No monotonicity or
+  sub-additivity constraint was ever implemented; the mechanism was an L2 penalty toward a
+  rolling parametric prior. The name came from the family of ideas the work was inspired by,
+  and it survived because nothing in the workflow required anyone to check it against the code.
+  \textbf{The paper's own title was wrong before any result was.}
+\item
+  Hyper-parameters were chosen by running the pipeline and looking at the output. There was no
+  validation block, so they were selected on the test set.
+\item
+  Each configuration ran on \textbf{one seed}.
+\item
+  Models were ranked on breach counts and ``capital reserved'' rather than on a strictly
+  consistent loss.
+\item
+  The GARCH benchmark carried a standardized-\emph{t} scaling error that inflated its VaR by
+  \(\nu/(\nu-2)\) --- that is, \textbf{the baseline we were beating was handicapped} (\Cref{sec:defects}).
+\end{itemize}
+
+Every item on that list is a decision someone made while trying to do good work, and none would
+have been caught by peer review of the resulting manuscript, because none is visible in a
+manuscript. Fixing them was not a matter of discovering misconduct. It was a matter of a
+protocol asking questions the original workflow had no place to put.
+
+What followed is the substance of this paper: each correction moved the result toward the null,
+and after four of them there was no result left. The four withdrawals below are not a catalogue
+of things other researchers do wrong. \textbf{They are what one careful project looked like when it was
+finally instrumented well enough to see itself.}

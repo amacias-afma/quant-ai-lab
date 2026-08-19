@@ -1,0 +1,9 @@
+\texttt{src/value\_at\_risk/evaluation/ledger.py}. An append-only JSONL record; one line per scoring pass
+over the test block, each carrying a sha256 fingerprint of the modules that determine what a
+test score means. Cells can be declared \emph{protected}; touching a protected cell that already has a
+recorded touch raises rather than warns, so the single-pass rule is enforced in code rather than
+in intention.
+
+The disclosure integers in \Cref{sec:disclosure} are read from it (\texttt{python\ -m\ value\_at\_risk.evaluation.ledger\ -\/-summary}), never counted by hand. Building it revealed \textbf{60 evaluations present in no run
+manifest} --- two early debugging runs --- which is the discrepancy an append-only record exists to
+surface.

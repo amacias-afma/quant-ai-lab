@@ -36,6 +36,7 @@ from scipy import stats
 __all__ = [
     "simulate", "optimal_theta", "fit_anchored", "seed_dispersion",
     "predicted_contraction", "run_demo", "default_weight_grid", "paired_comparison",
+    "separation_trace", "contraction_accuracy", "anchor_invariance",
 ]
 
 
@@ -105,6 +106,147 @@ def predicted_contraction(w: float, lr: float = 0.05, steps: int = 400) -> float
     if factor <= 0:
         return 0.0
     return float(factor ** steps)
+
+
+def separation_trace(X, y, alpha, anchor, w, seed_a=0, seed_b=1,
+                     steps=400, lr=0.05, init_scale=3.0):
+    """Track ||theta_a(t) - theta_b(t)|| for two runs differing only in initialisation.
+
+    Why this exists
+    ---------------
+    The paper's derivation is
+
+        Delta_{t+1} = (1 - 2*lr*w) * Delta_t  -  lr * [ g(theta_a) - g(theta_b) ]
+
+    and then **drops the second term** to obtain ``spread_T ~ spread_0 * (1-2*lr*w)^T``.
+    The cancellation of the anchor ``a`` in the first term is exact; the dropped term is an
+    approximation that the paper asserted without measuring. This function measures it.
+
+    Returns ``(observed, predicted)``, each of length ``steps + 1`` and normalised to
+    ``||Delta_0|| = 1``, so they are directly comparable.
+
+    Note the two runs must share the data and differ ONLY in initialisation, which is the
+    condition under which the derivation applies.
+    """
+    rng_a = np.random.default_rng(1000 + seed_a)
+    rng_b = np.random.default_rng(1000 + seed_b)
+    ta = rng_a.standard_normal(X.shape[1]) * init_scale
+    tb = rng_b.standard_normal(X.shape[1]) * init_scale
+
+    d0 = float(np.linalg.norm(ta - tb))
+    observed = np.empty(steps + 1)
+    observed[0] = 1.0
+
+    for t in range(steps):
+        ga = _pinball_subgrad(X, y, ta, alpha)
+        gb = _pinball_subgrad(X, y, tb, alpha)
+        if w:
+            ga = ga + 2.0 * w * (ta - anchor)
+            gb = gb + 2.0 * w * (tb - anchor)
+        ta = ta - lr * ga
+        tb = tb - lr * gb
+        observed[t + 1] = float(np.linalg.norm(ta - tb)) / d0
+
+    factor = 1.0 - 2.0 * lr * w
+    predicted = np.array([factor ** t if factor > 0 else 0.0 for t in range(steps + 1)])
+    return observed, predicted
+
+
+def contraction_accuracy(weights=None, alpha: float = 0.05, seed: int = 0,
+                         steps: int = 400, lr: float = 0.05):
+    """How well does (1-2*lr*w)^T describe the real separation trajectory?
+
+    Reported per weight, using the TRUE anchor (the dropped term does not depend on the
+    anchor's value, so the choice is immaterial; see ``test_shrinkage_demo``):
+
+        absolute_ratio   obs_final / pred_final. 1.0 would mean the raw formula is exact.
+        relative_ratio   the same comparison for the quantity the paper actually reports —
+                         contraction **relative to w = 0** — which is what an IQR ratio is.
+        max_log10_gap    worst absolute discrepancy over the trajectory, in decades.
+
+    The w = 0 row is the diagnostic one: there the prediction is identically 1 (no penalty,
+    hence no predicted contraction), so any observed contraction is **entirely** the dropped
+    data term. It measures the omitted contribution in isolation.
+
+    The distinction between the two ratios matters. The paper never quotes an absolute
+    spread; every figure it reports is a ratio against the unanchored baseline. If the
+    dropped term contributes a roughly constant factor, it cancels in that ratio, and the
+    approximation is far better for the reported quantity than for the raw one.
+    """
+    if weights is None:
+        weights = default_weight_grid()
+    X, y, theta_star = simulate(n=4000, alpha=alpha, seed=seed)
+    a = optimal_theta(theta_star)
+
+    base = None
+    rows = []
+    for w in weights:
+        obs, pred = separation_trace(X, y, alpha, a, w, steps=steps, lr=lr)
+        if base is None:                       # first grid point is w = 0 by construction
+            base = float(obs[-1])
+        # Compare on the log scale: these span decades, so a raw difference is meaningless.
+        floor = 1e-300
+        gap = np.abs(np.log10(np.maximum(obs, floor)) - np.log10(np.maximum(pred, floor)))
+        obs_rel = base / obs[-1] if obs[-1] > 0 else float("inf")
+        pred_rel = 1.0 / pred[-1] if pred[-1] > 0 else float("inf")
+        rows.append(dict(
+            weight=float(w),
+            observed_final=float(obs[-1]),
+            predicted_final=float(pred[-1]),
+            absolute_ratio=float(obs[-1] / pred[-1]) if pred[-1] > 0 else float("inf"),
+            observed_rel=float(obs_rel),
+            predicted_rel=float(pred_rel),
+            relative_ratio=float(obs_rel / pred_rel) if pred_rel not in (0, float("inf")) else 1.0,
+            max_log10_gap=float(gap.max()),
+        ))
+    return rows
+
+
+def anchor_invariance(weights=None, alpha: float = 0.05, seed: int = 0,
+                      steps: int = 400, lr: float = 0.05):
+    """How anchor-independent is the contraction, really?
+
+    **A correction, recorded because measuring it changed what we believed.** An earlier
+    version of this docstring asserted that the two trajectories must agree "to numerical
+    precision," on the grounds that ``a`` cancels exactly in
+
+        Delta_{t+1} = (1 - 2*lr*w) * Delta_t  -  lr * [ g(theta_a) - g(theta_b) ]
+
+    **That assertion was wrong, and this function is what showed it.** The cancellation is
+    exact for the *penalty* term only. The anchor still moves each iterate individually, so
+    it changes *where* the two runs sit, and therefore changes the pinball subgradient
+    difference ``g(theta_a) - g(theta_b)`` — the term the derivation drops. The anchor is
+    absent from the explicit contraction and re-enters implicitly through the data term.
+
+    Measured (400 steps, lr = 0.05): agreement is within 3.4% for w <= 0.017 and degrades
+    monotonically thereafter, reaching ~50% at w = 0.1. So the correct statement is
+    **anchor-independent to first order, with a second-order dependence that grows with w**.
+
+    This does not damage the paper's argument and the numbers say why: at w = 0.1 the two
+    anchors differ by 50% while the contraction itself is 44x-56x, and the *nonsense* anchor
+    contracts the parameter separation slightly **less** — so the residual dependence does
+    not run in the direction that would rescue the informative prior.
+
+    Returns per-weight the maximum relative difference between the two trajectories.
+    """
+    if weights is None:
+        weights = default_weight_grid()
+    X, y, theta_star = simulate(n=4000, alpha=alpha, seed=seed)
+    truth = optimal_theta(theta_star)
+    rng = np.random.default_rng(999)
+    r = rng.standard_normal(truth.shape)
+    nonsense = r / np.linalg.norm(r) * np.linalg.norm(truth)
+
+    rows = []
+    for w in weights:
+        o_t, _ = separation_trace(X, y, alpha, truth, w, steps=steps, lr=lr)
+        o_n, _ = separation_trace(X, y, alpha, nonsense, w, steps=steps, lr=lr)
+        denom = np.maximum(np.abs(o_t), 1e-300)
+        rows.append(dict(weight=float(w),
+                         max_rel_diff=float(np.max(np.abs(o_t - o_n) / denom)),
+                         final_truth=float(o_t[-1]),
+                         final_nonsense=float(o_n[-1])))
+    return rows
 
 
 def default_weight_grid(n: int = 10, lo: float = 5e-4, hi: float = 0.1):
